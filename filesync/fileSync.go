@@ -7,9 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 )
-
-// TODO concurrency
 
 func Sync(source, destination string) error {
 	sourceFiles, err := readDirectory(source)
@@ -32,9 +31,16 @@ func Sync(source, destination string) error {
 	}
 
 	if len(filesToCopy) > 0 {
-		err := copyFiles(filesToCopy, source, destination)
-		if err != nil {
-			return err
+		if len(filesToCopy) > 50 {
+			err := copyFilesConcurrent(filesToCopy, source, destination)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := copyFiles(filesToCopy, source, destination)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -121,6 +127,55 @@ func copyFiles(filesToCopy []string, source, destination string) error {
 	}
 
 	return nil
+}
+
+func copyFilesConcurrent(filesToCopy []string, source, destination string) error {
+	const workerCount = 4
+	jobs := make(chan string)
+	errorChan := make(chan error, workerCount)
+	var waitGroup sync.WaitGroup
+
+	waitGroup.Add(workerCount)
+	for range workerCount {
+		go copyFileWorker(jobs, errorChan, source, destination, &waitGroup)
+	}
+
+	for _, file := range filesToCopy {
+		jobs <- file
+	}
+
+	close(jobs)
+
+	go func() {
+		waitGroup.Wait()
+		close(errorChan)
+	}()
+
+	var firstError error
+
+	for err := range errorChan {
+		if err != nil && firstError == nil {
+			firstError = err
+		}
+	}
+
+	return firstError
+}
+
+func copyFileWorker(jobs <-chan string, errors chan<- error, source string, destination string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for file := range jobs {
+		sourceFilePath := filepath.Join(source, file)
+		destinationFilePath := filepath.Join(destination, file)
+		err := copyFile(sourceFilePath, destinationFilePath)
+		if err != nil {
+			errors <- err
+			continue
+		}
+
+		log.Printf("copied %s", file)
+	}
 }
 
 func copyFile(source, destination string) error {
