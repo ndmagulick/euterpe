@@ -1,6 +1,5 @@
 /*
    TODO near future
-   - concurrency
    - do proper file diff
    - calculate space and verify
    - write tests

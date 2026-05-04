@@ -151,6 +151,7 @@ func copyFilesConcurrent(filesToCopy []string, source, destination string) error
 		close(errorChan)
 	}()
 
+	// TODO combine all errors
 	var firstError error
 
 	for err := range errorChan {

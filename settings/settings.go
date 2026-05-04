@@ -32,3 +32,7 @@ func ReadSettings() (settings Settings, err error) {
 
 	return settings, nil
 }
+
+func ValidateSettings() {
+	// stub, implement later
+}
