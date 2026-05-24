@@ -8,7 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
+
+type fileData struct {
+	name             string
+	size             int64
+	lastModifiedTime time.Time
+}
 
 func Sync(source, destination string) error {
 	sourceFiles, err := readDirectory(source)
@@ -31,29 +38,22 @@ func Sync(source, destination string) error {
 	}
 
 	if len(filesToCopy) > 0 {
-		if len(filesToCopy) > 50 {
-			err := copyFilesConcurrent(filesToCopy, source, destination)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := copyFiles(filesToCopy, source, destination)
-			if err != nil {
-				return err
-			}
+		err := copyFilesConcurrent(filesToCopy, source, destination)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func readDirectory(path string) (map[string]int64, error) {
+func readDirectory(path string) (map[string]fileData, error) {
 	directoryEntries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
 	}
 
-	files := make(map[string]int64)
+	files := make(map[string]fileData)
 
 	for _, file := range directoryEntries {
 		if file.IsDir() {
@@ -69,69 +69,62 @@ func readDirectory(path string) (map[string]int64, error) {
 		if err != nil {
 			return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
 		}
-
-		files[file.Name()] = fileInfo.Size()
+		files[file.Name()] = fileData{
+			name:             file.Name(),
+			size:             fileInfo.Size(),
+			lastModifiedTime: fileInfo.ModTime(),
+		}
 	}
 
 	return files, nil
 }
 
-func diffDirectories(sourceFiles map[string]int64, destinationFiles map[string]int64) (filesToDelete, filesToCopy []string) {
-	filesToDelete = []string{}
-	filesToCopy = []string{}
+func diffDirectories(sourceFiles map[string]fileData, destinationFiles map[string]fileData) (filesToDelete, filesToCopy []fileData) {
+	filesToDelete = []fileData{}
+	filesToCopy = []fileData{}
 
-	// TODO do a better file comparison, size isn't a true indicator of file modification
 	for key, value := range destinationFiles {
-		size, ok := sourceFiles[key]
-		if !ok || size != value {
-			filesToDelete = append(filesToDelete, key)
+		info, ok := sourceFiles[key]
+		modTimesAreEqual := timesAreEqualWithTolerance(info.lastModifiedTime, value.lastModifiedTime)
+		if !ok || !modTimesAreEqual || info.size != value.size {
+			filesToDelete = append(filesToDelete, value)
 		}
 	}
 
 	for key, value := range sourceFiles {
-		size, ok := destinationFiles[key]
-		if !ok || size != value {
-			filesToCopy = append(filesToCopy, key)
+		info, ok := destinationFiles[key]
+		modTimesAreEqual := timesAreEqualWithTolerance(info.lastModifiedTime, value.lastModifiedTime)
+		if !ok || !modTimesAreEqual || info.size != value.size {
+			filesToCopy = append(filesToCopy, value)
 		}
 	}
 
 	return filesToDelete, filesToCopy
 }
 
-func deleteFiles(filesToDelete []string, path string) error {
+func timesAreEqualWithTolerance(time1, time2 time.Time) bool {
+	// most mp3 players use FAT32 which has a 2 second granularity for time
+	return time1.Sub(time2).Abs() <= 2*time.Second
+}
+
+func deleteFiles(filesToDelete []fileData, path string) error {
 	for _, file := range filesToDelete {
-		fileToDeletePath := filepath.Join(path, file)
+		fileToDeletePath := filepath.Join(path, file.name)
 		err := os.Remove(fileToDeletePath)
 
 		if err != nil {
 			return fmt.Errorf("deleteFiles: %w", err)
 		} else {
-			log.Printf("deleted %s from %s", file, path)
+			log.Printf("deleted %s from %s", file.name, path)
 		}
 	}
 
 	return nil
 }
 
-func copyFiles(filesToCopy []string, source, destination string) error {
-	for _, file := range filesToCopy {
-		sourceFilePath := filepath.Join(source, file)
-		destinationFilePath := filepath.Join(destination, file)
-		err := copyFile(sourceFilePath, destinationFilePath)
-
-		if err != nil {
-			return fmt.Errorf("copyFiles: %w", err)
-		} else {
-			log.Printf("copied %s", file)
-		}
-	}
-
-	return nil
-}
-
-func copyFilesConcurrent(filesToCopy []string, source, destination string) error {
+func copyFilesConcurrent(filesToCopy []fileData, source, destination string) error {
 	const workerCount = 4
-	jobs := make(chan string)
+	jobs := make(chan fileData)
 	errorChan := make(chan error, workerCount)
 	var waitGroup sync.WaitGroup
 
@@ -163,24 +156,25 @@ func copyFilesConcurrent(filesToCopy []string, source, destination string) error
 	return firstError
 }
 
-func copyFileWorker(jobs <-chan string, errors chan<- error, source string, destination string, wg *sync.WaitGroup) {
+func copyFileWorker(jobs <-chan fileData, errors chan<- error, source string, destination string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for file := range jobs {
-		sourceFilePath := filepath.Join(source, file)
-		destinationFilePath := filepath.Join(destination, file)
-		err := copyFile(sourceFilePath, destinationFilePath)
+		sourceFilePath := filepath.Join(source, file.name)
+		destinationFilePath := filepath.Join(destination, file.name)
+		err := copyFile(sourceFilePath, destinationFilePath, file.lastModifiedTime)
 		if err != nil {
 			errors <- err
 			continue
 		}
 
-		log.Printf("copied %s", file)
+		log.Printf("copied %s", file.name)
 	}
 }
 
-func copyFile(source, destination string) error {
+func copyFile(source, destination string, sourceModTime time.Time) error {
 	sourceFile, err := os.Open(source)
+
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
@@ -198,5 +192,15 @@ func copyFile(source, destination string) error {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
-	return destinationFile.Sync()
+	err = destinationFile.Sync()
+	if err != nil {
+		return fmt.Errorf("copyFile: %w", err)
+	}
+
+	err = os.Chtimes(destination, time.Time{}, sourceModTime)
+	if err != nil {
+		return fmt.Errorf("copyFile: %w", err)
+	}
+
+	return nil
 }

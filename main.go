@@ -1,6 +1,5 @@
 /*
    TODO near future
-   - do proper file diff
    - calculate space and verify
    - write tests
    CLI functions
@@ -24,6 +23,11 @@ import (
 
 func main() {
 	config, err := settings.ReadSettings()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = settings.ValidateSettings(config)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -33,6 +33,14 @@ func ReadSettings() (settings Settings, err error) {
 	return settings, nil
 }
 
-func ValidateSettings() {
-	// stub, implement later
+func ValidateSettings(settings Settings) error {
+	if _, err := os.Stat(settings.SourceFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("validateSettings: %w", err)
+	}
+
+	if _, err := os.Stat(settings.DestinationFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("validateSettings: %w", err)
+	}
+
+	return nil
 }
