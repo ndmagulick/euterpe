@@ -1,6 +1,5 @@
 /*
    TODO near future
-   - calculate space and verify
    - write tests
    CLI functions
    - Print diff

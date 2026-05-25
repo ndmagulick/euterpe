@@ -19,9 +19,6 @@ Starting out by just making a simple program, then I want to make a full CLI, an
 
 #### Near Future
 
-- Use concurrency functionality in Go for sync function (delete/copy)
-- Do a proper file diff to detect changes rather than just relying on size for files that exist in both the library and mp3 player
-- Do space calculations to ensure sync won't go over remaining storage on the mp3 player
 - Write tests
 
 #### CLI Functionality (incomplete)

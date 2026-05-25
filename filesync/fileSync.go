@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type fileData struct {
@@ -29,6 +31,14 @@ func Sync(source, destination string) error {
 	}
 
 	filesToDelete, filesToCopy := diffDirectories(sourceFiles, destinationFiles)
+	syncSize := calculateSpaceChange(filesToCopy, filesToDelete)
+
+	if syncSize > 0 {
+		err = checkIfSufficientSpaceExists(destination, syncSize)
+		if err != nil {
+			return err
+		}
+	}
 
 	if len(filesToDelete) > 0 {
 		err := deleteFiles(filesToDelete, destination)
@@ -105,6 +115,34 @@ func diffDirectories(sourceFiles map[string]fileData, destinationFiles map[strin
 func timesAreEqualWithTolerance(time1, time2 time.Time) bool {
 	// most mp3 players use FAT32 which has a 2 second granularity for time
 	return time1.Sub(time2).Abs() <= 2*time.Second
+}
+
+func calculateSpaceChange(filesToCopy, filesToDelete []fileData) int64 {
+	var filesToCopyTotalSize int64
+	var filesToDeleteTotalSize int64
+
+	for _, data := range filesToCopy {
+		filesToCopyTotalSize += data.size
+	}
+
+	for _, data := range filesToDelete {
+		filesToDeleteTotalSize += data.size
+	}
+
+	return filesToCopyTotalSize - filesToDeleteTotalSize
+}
+
+func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
+	usage, err := disk.Usage(destinationPath)
+	if err != nil {
+		return fmt.Errorf("checkIfSufficientSpaceExists: %w", err)
+	}
+
+	if sizeOfSync > int64(usage.Free) {
+		return fmt.Errorf("insufficient space. need %d bytes, but only %d bytes available.", sizeOfSync, usage.Free)
+	}
+
+	return nil
 }
 
 func deleteFiles(filesToDelete []fileData, path string) error {
