@@ -48,9 +48,9 @@ func Sync(source, destination string) error {
 	}
 
 	if len(filesToCopy) > 0 {
-		err := copyFilesConcurrent(filesToCopy, source, destination)
-		if err != nil {
-			return err
+		errs := copyFilesConcurrent(filesToCopy, source, destination)
+		if len(errs) > 0 {
+			return fmt.Errorf("%d files failed to copy. See log for details.", len(errs))
 		}
 	}
 
@@ -160,10 +160,10 @@ func deleteFiles(filesToDelete []fileData, path string) error {
 	return nil
 }
 
-func copyFilesConcurrent(filesToCopy []fileData, source, destination string) error {
-	const workerCount = 4
+func copyFilesConcurrent(filesToCopy []fileData, source, destination string) []error {
+	const workerCount = 4 // We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
 	jobs := make(chan fileData)
-	errorChan := make(chan error, workerCount)
+	errorChan := make(chan error)
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(workerCount)
@@ -182,16 +182,15 @@ func copyFilesConcurrent(filesToCopy []fileData, source, destination string) err
 		close(errorChan)
 	}()
 
-	// TODO combine all errors
-	var firstError error
+	var errors []error
 
 	for err := range errorChan {
-		if err != nil && firstError == nil {
-			firstError = err
+		if err != nil {
+			errors = append(errors, err)
 		}
 	}
 
-	return firstError
+	return errors
 }
 
 func copyFileWorker(jobs <-chan fileData, errors chan<- error, source string, destination string, wg *sync.WaitGroup) {
@@ -202,6 +201,7 @@ func copyFileWorker(jobs <-chan fileData, errors chan<- error, source string, de
 		destinationFilePath := filepath.Join(destination, file.name)
 		err := copyFile(sourceFilePath, destinationFilePath, file.lastModifiedTime)
 		if err != nil {
+			log.Printf("Failed to copy %s: %v", file.name, err)
 			errors <- err
 			continue
 		}
@@ -235,6 +235,7 @@ func copyFile(source, destination string, sourceModTime time.Time) error {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
+	// We make the modified time to match the source's since when copying files in Go, it sets it to the same as the creation date
 	err = os.Chtimes(destination, time.Time{}, sourceModTime)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
