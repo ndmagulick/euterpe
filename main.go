@@ -1,17 +1,3 @@
-/*
-   TODO near future
-   - write tests
-   CLI functions
-   - Print diff
-   - Print settings
-   - Print space
-   - add option to back up files prior to sync
-   - add status bar [====>  ] x%
-   TODO much later
-   - add support for expandable storage
-   - add support for sub directories
-*/
-
 package main
 
 import (

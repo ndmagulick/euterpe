@@ -41,6 +41,7 @@ func Sync(source, destination string) error {
 	}
 
 	if len(filesToDelete) > 0 {
+		log.Printf("Deleting files from %s...", destination)
 		err := deleteFiles(filesToDelete, destination)
 		if err != nil {
 			return err
@@ -48,9 +49,10 @@ func Sync(source, destination string) error {
 	}
 
 	if len(filesToCopy) > 0 {
+		log.Printf("Copying files from %s to %s...", source, destination)
 		errs := copyFilesConcurrent(filesToCopy, source, destination)
 		if len(errs) > 0 {
-			return fmt.Errorf("%d files failed to copy. See log for details.", len(errs))
+			return fmt.Errorf("%d files failed to copy. See log for details", len(errs))
 		}
 	}
 
@@ -79,6 +81,7 @@ func readDirectory(path string) (map[string]fileData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
 		}
+
 		files[file.Name()] = fileData{
 			name:             file.Name(),
 			size:             fileInfo.Size(),
@@ -139,7 +142,7 @@ func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) erro
 	}
 
 	if sizeOfSync > int64(usage.Free) {
-		return fmt.Errorf("insufficient space. need %d bytes, but only %d bytes available.", sizeOfSync, usage.Free)
+		return fmt.Errorf("insufficient space. need %d bytes, but only %d bytes available", sizeOfSync, usage.Free)
 	}
 
 	return nil
@@ -153,7 +156,7 @@ func deleteFiles(filesToDelete []fileData, path string) error {
 		if err != nil {
 			return fmt.Errorf("deleteFiles: %w", err)
 		} else {
-			log.Printf("deleted %s from %s", file.name, path)
+			log.Printf("deleted %s", file.name)
 		}
 	}
 
