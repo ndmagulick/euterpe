@@ -17,10 +17,6 @@ Starting out by just making a simple program, then I want to make a full CLI, an
 
 ## Things To Do Still
 
-#### Near Future
-
-- Write tests
-
 #### CLI Functionality (incomplete)
 
 - Print diff
