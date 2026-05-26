@@ -169,7 +169,8 @@ func TestSync(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act
-	Sync(source, destination)
+	err = Sync(source, destination)
+	require.NoError(t, err)
 
 	// Assert
 	actual, err := os.ReadDir(destination)
@@ -195,7 +196,6 @@ func TestSync(t *testing.T) {
 }
 
 func generateFiles(filePath string, fileList []dummyFile) error {
-
 	for _, file := range fileList {
 		err := os.WriteFile(filepath.Join(filePath, file.name), []byte(file.content), 0644)
 		if err != nil {
