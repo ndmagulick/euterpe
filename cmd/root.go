@@ -36,4 +36,5 @@ func Execute() {
 func init() {
 	rootCommand.AddCommand(syncCommand)
 	rootCommand.AddCommand(diffCommand)
+	rootCommand.AddCommand(versionCommand)
 }
