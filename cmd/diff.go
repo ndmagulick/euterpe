@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"euterpe/internal/filesync"
-	"euterpe/internal/settings"
 	"fmt"
 	"log"
 
@@ -27,13 +26,15 @@ var diffCommand = &cobra.Command{
 
 		filesToDelete, filesToCopy := filesync.DiffDirectories(sourceFiles, destinationFiles)
 
-		printDiff(filesToDelete, filesToCopy, config)
+		printDiff(filesToDelete, filesToCopy)
 	},
 }
 
-func printDiff(filesToDelete, filesToCopy []filesync.FileData, config settings.Settings) {
+func printDiff(filesToDelete, filesToCopy []filesync.FileData) {
+	minus := color.RedString("-")
+	plus := color.GreenString("+")
+
 	if len(filesToDelete) > 0 {
-		minus := color.RedString("-")
 		var sizeToBeFreed int64
 
 		color.Blue("%d files will be deleted from %s", len(filesToDelete), config.DestinationFilePath)
@@ -48,7 +49,6 @@ func printDiff(filesToDelete, filesToCopy []filesync.FileData, config settings.S
 	}
 
 	if len(filesToCopy) > 0 {
-		plus := color.GreenString("+")
 		var sizeToBeUsed int64
 
 		color.Blue("%d files will be copied from %s to %s", len(filesToCopy), config.SourceFilePath, config.DestinationFilePath)
