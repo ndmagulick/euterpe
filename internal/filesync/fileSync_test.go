@@ -42,7 +42,7 @@ func TestReadDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act
-	musicFiles, err := readDirectory(testDirectory)
+	musicFiles, err := ReadDirectory(testDirectory)
 	require.NoError(t, err)
 
 	// Assert
@@ -79,9 +79,9 @@ func TestDiffDirectories(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act
-	dir1FileData, _ := readDirectory(dir1)
-	dir2FileData, _ := readDirectory(dir2)
-	filesToDelete, filesToCopy := diffDirectories(dir1FileData, dir2FileData)
+	dir1FileData, _ := ReadDirectory(dir1)
+	dir2FileData, _ := ReadDirectory(dir2)
+	filesToDelete, filesToCopy := DiffDirectories(dir1FileData, dir2FileData)
 
 	// Assert
 	assert.Equal(t, 3, len(filesToDelete))
@@ -124,13 +124,13 @@ func TestTimesAreEqualWithTolerance(t *testing.T) {
 func TestCalculateSpaceChange(t *testing.T) {
 	testCases := []struct {
 		testCase      string
-		filesToCopy   []fileData
-		filesToDelete []fileData
+		filesToCopy   []FileData
+		filesToDelete []FileData
 		expected      int64
 	}{
-		{"filesToCopy is larger", []fileData{{name: "test.mp3", size: 25, lastModifiedTime: time.Time{}}}, []fileData{{name: "test.wav", size: 10, lastModifiedTime: time.Time{}}}, 15},
-		{"filesToDelete is larger", []fileData{{name: "test.mp3", size: 25, lastModifiedTime: time.Time{}}}, []fileData{{name: "test.flac", size: 250, lastModifiedTime: time.Time{}}}, -225},
-		{"filesToCopy and filesToDelete are equal", []fileData{{name: "test.mp3", size: 25, lastModifiedTime: time.Time{}}}, []fileData{{name: "test.ogg", size: 25, lastModifiedTime: time.Time{}}}, 0},
+		{"filesToCopy is larger", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.wav", Size: 10, LastModifiedTime: time.Time{}}}, 15},
+		{"filesToDelete is larger", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.flac", Size: 250, LastModifiedTime: time.Time{}}}, -225},
+		{"filesToCopy and filesToDelete are equal", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.ogg", Size: 25, LastModifiedTime: time.Time{}}}, 0},
 	}
 
 	for _, testCase := range testCases {
@@ -206,9 +206,9 @@ func generateFiles(filePath string, fileList []dummyFile) error {
 	return nil
 }
 
-func fileDataListContainsFileName(name string, fileDataList []fileData) bool {
+func fileDataListContainsFileName(name string, fileDataList []FileData) bool {
 	for _, value := range fileDataList {
-		if value.name == name {
+		if value.Name == name {
 			return true
 		}
 	}
