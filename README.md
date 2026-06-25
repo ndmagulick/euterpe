@@ -17,14 +17,16 @@ Starting out by just making a simple program, then I want to make a full CLI, an
 
 ## Things To Do Still
 
+- Make a proper README
+
 #### CLI Functionality (incomplete)
 
-- Print diff
-- Print settings
 - Print space
 - Add command to back up prior to sync
 - Add command to restore
 - Status bar
+- Edit config
+- Verify config
 
 #### Much Later (incomplete)
 
