@@ -97,18 +97,22 @@ func DiffDirectories(sourceFiles map[string]FileData, destinationFiles map[strin
 	filesToDelete = []FileData{}
 	filesToCopy = []FileData{}
 
+	// Bug discovered 26.09.26 - in some Mp3 models, the player "re-creates" the files when powered on, and the size check is broken.
+	// Removed the additional checks until I figure out what broke.
 	for key, value := range destinationFiles {
-		info, ok := sourceFiles[key]
-		modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
-		if !ok || !modTimesAreEqual || info.Size != value.Size {
+		//info, ok := sourceFiles[key]
+		//modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
+		_, ok := sourceFiles[key]
+		if !ok {
 			filesToDelete = append(filesToDelete, value)
 		}
 	}
 
 	for key, value := range sourceFiles {
-		info, ok := destinationFiles[key]
-		modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
-		if !ok || !modTimesAreEqual || info.Size != value.Size {
+		// info, ok := destinationFiles[key]
+		// modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
+		_, ok := sourceFiles[key]
+		if !ok {
 			filesToCopy = append(filesToCopy, value)
 		}
 	}
