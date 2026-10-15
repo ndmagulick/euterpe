@@ -17,6 +17,7 @@ Starting out by just making a simple program, then I want to make a full CLI, an
 
 ## Things To Do Still
 
+- Create database to make diffing more accurate and faster
 - Make a proper README
 
 #### CLI Functionality (incomplete)
