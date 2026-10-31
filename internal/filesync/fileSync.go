@@ -111,7 +111,7 @@ func DiffDirectories(sourceFiles map[string]FileData, destinationFiles map[strin
 	for key, value := range sourceFiles {
 		// info, ok := destinationFiles[key]
 		// modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
-		_, ok := sourceFiles[key]
+		_, ok := destinationFiles[key]
 		if !ok {
 			filesToCopy = append(filesToCopy, value)
 		}
