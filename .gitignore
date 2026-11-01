@@ -1,3 +1,5 @@
 *.exe
 *.json
 *.env
+*.db
+*.db-journal

@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"euterpe/internal/database"
 	"euterpe/internal/settings"
 
 	"github.com/spf13/cobra"
+
+	_ "modernc.org/sqlite"
 )
 
 var config settings.Settings
@@ -24,6 +27,12 @@ var rootCommand = &cobra.Command{
 		}
 
 		config = cfg
+
+		// Validate database
+		err = database.ValidateDatabase()
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
