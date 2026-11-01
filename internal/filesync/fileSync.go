@@ -157,7 +157,7 @@ func deleteFiles(filesToDelete []FileData, path string) error {
 }
 
 func copyFilesConcurrent(filesToCopy []FileData, source, destination string) []error {
-	const workerCount = 4 // We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
+	const workerCount = 2 // We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
 	jobs := make(chan FileData)
 	errorChan := make(chan error)
 	var waitGroup sync.WaitGroup
