@@ -52,6 +52,7 @@ func TestReadDirectory(t *testing.T) {
 	assert.NotContains(t, musicFiles, "dir2")
 }
 
+// TODO fix tests
 func TestDiffDirectories(t *testing.T) {
 	// Arrange
 	dir1 := t.TempDir()
