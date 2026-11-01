@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,31 +95,6 @@ func TestDiffDirectories(t *testing.T) {
 	assert.True(t, fileDataListContainsFileName("f.mp3", filesToCopy))
 }
 
-func TestTimesAreEqualWithTolerance(t *testing.T) {
-	now := time.Now()
-
-	testCases := []struct {
-		testCase string
-		time1    time.Time
-		time2    time.Time
-		expected bool
-	}{
-		{"equal time", now, now, true},
-		{"within tolerance", now, now.Add(1 * time.Second), true},
-		{"at tolerance boundary", now, now.Add(2 * time.Second), true},
-		{"outside tolerance boundary", now, now.Add(3 * time.Second), false},
-		{"negative within boundary", now, now.Add(-1 * time.Second), true},
-		{"negative outside boundary", now, now.Add(-3 * time.Second), false},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.testCase, func(t *testing.T) {
-			actual := timesAreEqualWithTolerance(testCase.time1, testCase.time2)
-			assert.Equal(t, testCase.expected, actual)
-		})
-	}
-}
-
 func TestCalculateSpaceChange(t *testing.T) {
 	testCases := []struct {
 		testCase      string
@@ -128,9 +102,9 @@ func TestCalculateSpaceChange(t *testing.T) {
 		filesToDelete []FileData
 		expected      int64
 	}{
-		{"filesToCopy is larger", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.wav", Size: 10, LastModifiedTime: time.Time{}}}, 15},
-		{"filesToDelete is larger", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.flac", Size: 250, LastModifiedTime: time.Time{}}}, -225},
-		{"filesToCopy and filesToDelete are equal", []FileData{{Name: "test.mp3", Size: 25, LastModifiedTime: time.Time{}}}, []FileData{{Name: "test.ogg", Size: 25, LastModifiedTime: time.Time{}}}, 0},
+		{"filesToCopy is larger", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.wav", Size: 10}}, 15},
+		{"filesToDelete is larger", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.flac", Size: 250}}, -225},
+		{"filesToCopy and filesToDelete are equal", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.ogg", Size: 25}}, 0},
 	}
 
 	for _, testCase := range testCases {

@@ -8,16 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type FileData struct {
-	Name             string
-	Size             int64
-	LastModifiedTime time.Time
+	Name string
+	Size int64
 }
 
 func Sync(source, destination string) error {
@@ -84,9 +82,8 @@ func ReadDirectory(path string) (map[string]FileData, error) {
 		}
 
 		files[file.Name()] = FileData{
-			Name:             file.Name(),
-			Size:             fileInfo.Size(),
-			LastModifiedTime: fileInfo.ModTime(),
+			Name: file.Name(),
+			Size: fileInfo.Size(),
 		}
 	}
 
@@ -97,11 +94,7 @@ func DiffDirectories(sourceFiles map[string]FileData, destinationFiles map[strin
 	filesToDelete = []FileData{}
 	filesToCopy = []FileData{}
 
-	// Bug discovered 26.09.26 - in some Mp3 models, the player "re-creates" the files when powered on, and the size check is broken.
-	// Removed the additional checks until I figure out what broke.
 	for key, value := range destinationFiles {
-		//info, ok := sourceFiles[key]
-		//modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
 		_, ok := sourceFiles[key]
 		if !ok {
 			filesToDelete = append(filesToDelete, value)
@@ -109,8 +102,6 @@ func DiffDirectories(sourceFiles map[string]FileData, destinationFiles map[strin
 	}
 
 	for key, value := range sourceFiles {
-		// info, ok := destinationFiles[key]
-		// modTimesAreEqual := timesAreEqualWithTolerance(info.LastModifiedTime, value.LastModifiedTime)
 		_, ok := destinationFiles[key]
 		if !ok {
 			filesToCopy = append(filesToCopy, value)
@@ -118,11 +109,6 @@ func DiffDirectories(sourceFiles map[string]FileData, destinationFiles map[strin
 	}
 
 	return filesToDelete, filesToCopy
-}
-
-func timesAreEqualWithTolerance(time1, time2 time.Time) bool {
-	// most mp3 players use FAT32 which has a 2 second granularity for time
-	return time1.Sub(time2).Abs() <= 2*time.Second
 }
 
 func calculateSpaceChange(filesToCopy, filesToDelete []FileData) int64 {
@@ -210,7 +196,7 @@ func copyFileWorker(jobs <-chan FileData, errors chan<- error, source string, de
 	for file := range jobs {
 		sourceFilePath := filepath.Join(source, file.Name)
 		destinationFilePath := filepath.Join(destination, file.Name)
-		err := copyFile(sourceFilePath, destinationFilePath, file.LastModifiedTime)
+		err := copyFile(sourceFilePath, destinationFilePath)
 		if err != nil {
 			log.Printf("Failed to copy %s: %v", file.Name, err)
 			errors <- err
@@ -221,7 +207,7 @@ func copyFileWorker(jobs <-chan FileData, errors chan<- error, source string, de
 	}
 }
 
-func copyFile(source, destination string, sourceModTime time.Time) error {
+func copyFile(source, destination string) error {
 	sourceFile, err := os.Open(source)
 
 	if err != nil {
@@ -242,12 +228,6 @@ func copyFile(source, destination string, sourceModTime time.Time) error {
 	}
 
 	err = destinationFile.Sync()
-	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
-	}
-
-	// We make the modified time to match the source's since when copying files in Go, it sets it to the same as the creation date
-	err = os.Chtimes(destination, time.Time{}, sourceModTime)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
