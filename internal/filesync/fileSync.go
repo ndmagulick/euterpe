@@ -1,6 +1,10 @@
 package filesync
 
 import (
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"errors"
 	"euterpe/internal/filter"
 	"fmt"
 	"io"
@@ -8,18 +12,26 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type FileData struct {
-	Name string
-	Size int64
+	Name             string
+	Size             int64
+	LastModifiedTime time.Time
 }
 
 func Sync(source, destination string) error {
 	sourceFiles, err := ReadDirectory(source)
+	_, err = CheckForStaleFiles(source, sourceFiles)
+	if err != nil {
+		return err
+	}
+	// hashing and db magic here, if no row exists, hash file -> add row with mod time
+	// if hashes are different, the file is dirty so you will need to delete old copy and copy again
 	if err != nil {
 		return err
 	}
@@ -58,6 +70,115 @@ func Sync(source, destination string) error {
 	return nil
 }
 
+// refactor this to make it more readable, pass in the db as well instead of opening it here
+// Write to database after files are done copying, not in here
+// Prune database for deleted items
+func CheckForStaleFiles(path string, files map[string]FileData) (map[string]FileData, error) {
+	db, err := sql.Open("sqlite", "cache.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	for key, value := range files {
+		var dbFileSize int64
+		var dbLastModifiedTime int64
+		var dbFileHash string
+
+		err = db.QueryRow(`SELECT size, lastModifiedTime, fileHash 
+		FROM fileHashes 
+		WHERE fileName = ?`, key).Scan(&dbFileSize, &dbLastModifiedTime, &dbFileHash)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			var fileHash string
+			fileHash, err = hashFile(filepath.Join(path, key))
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = db.Exec(`INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
+					VALUES (?, ?, ?, ?)`, key, value.Size, value.LastModifiedTime.UnixNano(), fileHash)
+
+			if err != nil {
+				return nil, err
+			}
+
+			// add to map
+		} else {
+			if value.Size != dbFileSize {
+				var sourceFileHash string
+				sourceFileHash, err = hashFile(filepath.Join(path, key))
+				if err != nil {
+					return nil, err
+				}
+
+				_, err = db.Exec(`UPDATE fileHashes 
+									SET fileHash = ?, 
+									lastModifiedTime = ?,
+									size = ?
+									WHERE fileName = ?`, sourceFileHash, value.LastModifiedTime.UnixNano(), value.Size, key)
+
+				if err != nil {
+					return nil, err
+				}
+
+				// add to map
+
+			} else if value.LastModifiedTime.UnixNano() != dbLastModifiedTime {
+				var sourceFileHash string
+				sourceFileHash, err = hashFile(filepath.Join(path, key))
+				if err != nil {
+					return nil, err
+				}
+
+				if sourceFileHash != dbFileHash {
+					_, err = db.Exec(`UPDATE fileHashes 
+									SET fileHash = ?, 
+									lastModifiedTime = ?,
+									size = ?
+									WHERE fileName = ?`, sourceFileHash, value.LastModifiedTime.UnixNano(), value.Size, key)
+
+					if err != nil {
+						return nil, err
+					}
+
+					// add to map
+				} else {
+					_, err = db.Exec(`UPDATE fileHashes 
+									SET lastModifiedTime = ?,
+									size = ?
+									WHERE fileName = ?`, value.LastModifiedTime.UnixNano(), value.Size, key)
+
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func hashFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", nil
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 func ReadDirectory(path string) (map[string]FileData, error) {
 	directoryEntries, err := os.ReadDir(path)
 	if err != nil {
@@ -82,8 +203,9 @@ func ReadDirectory(path string) (map[string]FileData, error) {
 		}
 
 		files[file.Name()] = FileData{
-			Name: file.Name(),
-			Size: fileInfo.Size(),
+			Name:             file.Name(),
+			Size:             fileInfo.Size(),
+			LastModifiedTime: fileInfo.ModTime(),
 		}
 	}
 

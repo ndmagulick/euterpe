@@ -37,7 +37,7 @@ func ValidateDatabase() error {
 		_, err = db.Exec(`CREATE TABLE fileHashes (
 							fileName TEXT PRIMARY KEY,
 							size 	 INTEGER NOT NULL,
-							lastModifiedTime TEXT NOT NULL,
+							lastModifiedTime INTEGER NOT NULL,
 							fileHash TEXT NOT NULL
 						)`)
 
