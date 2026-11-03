@@ -2,10 +2,19 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+type FileHashRecord struct {
+	Exists           bool
+	FileSize         int64
+	LastModifiedTime int64
+	FileHash         string
+}
 
 func ValidateDatabase() error {
 	db, err := sql.Open("sqlite", "cache.db")
@@ -45,6 +54,67 @@ func ValidateDatabase() error {
 			return err
 		}
 	}
+
+	return err
+}
+
+func GetFileHashRecord(fileName string) (FileHashRecord, error) {
+	var dbFileSize int64
+	var dbLastModifiedTime int64
+	var dbFileHash string
+	query := `SELECT size, lastModifiedTime, fileHash 
+			FROM fileHashes 
+			WHERE fileName = ?`
+
+	err := db.QueryRow(query, fileName).Scan(&dbFileSize, &dbLastModifiedTime, &dbFileHash)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return FileHashRecord{}, nil
+	}
+
+	if err != nil {
+		return FileHashRecord{}, err
+	}
+
+	return FileHashRecord{Exists: true, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}, nil
+}
+
+func InsertFileHashRecord(fileName string, fileSize int64, lastModifiedTime time.Time, fileHash string) error {
+	query := `INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
+				VALUES (?, ?, ?, ?)`
+
+	_, err := db.Exec(query, fileName, fileSize, lastModifiedTime.UnixNano(), fileHash)
+
+	return err
+}
+
+func UpdateFileHashRecord(fileName string, fileSize int64, lastModifiedTime time.Time, fileHash string) error {
+	query := `UPDATE fileHashes 
+			SET fileHash = ?, 
+			lastModifiedTime = ?,
+			size = ?
+			WHERE fileName = ?`
+
+	_, err := db.Exec(query, fileHash, lastModifiedTime.UnixNano(), fileSize, fileName)
+
+	return err
+}
+
+func UpdateFileHashMetadata(fileName string, fileSize int64, lastModifiedTime time.Time) error {
+	query := `UPDATE fileHashes 
+				SET lastModifiedTime = ?,
+				size = ?
+				WHERE fileName = ?`
+
+	_, err := db.Exec(query, lastModifiedTime.UnixNano(), fileSize, fileName)
+
+	return err
+}
+
+func DeleteFileHashRecord(fileName string) error {
+	query := `DELETE FROM fileHashes WHERE fileName = ?`
+
+	_, err := db.Exec(query, fileName)
 
 	return err
 }

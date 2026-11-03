@@ -2,9 +2,8 @@ package filesync
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
-	"errors"
+	"euterpe/internal/database"
 	"euterpe/internal/filter"
 	"fmt"
 	"io"
@@ -24,14 +23,28 @@ type FileData struct {
 	LastModifiedTime time.Time
 }
 
+type RecordOperation int
+
+const (
+	InsertRecord RecordOperation = iota + 1
+	UpdateRecord
+)
+
+type CacheUpdate struct {
+	FileData  FileData
+	Hash      string
+	Operation RecordOperation
+}
+
 func Sync(source, destination string) error {
 	sourceFiles, err := ReadDirectory(source)
 	_, err = CheckForStaleFiles(source, sourceFiles)
 	if err != nil {
 		return err
 	}
-	// hashing and db magic here, if no row exists, hash file -> add row with mod time
-	// if hashes are different, the file is dirty so you will need to delete old copy and copy again
+
+	var cacheUpdates map[string]CacheUpdate
+	cacheUpdates, err = CheckForStaleFiles(source, sourceFiles)
 	if err != nil {
 		return err
 	}
@@ -59,7 +72,7 @@ func Sync(source, destination string) error {
 		}
 	}
 
-	if len(filesToCopy) > 0 {
+	if len(filesToCopy) > 0 || len(cacheUpdates) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
 		errs := copyFilesConcurrent(filesToCopy, source, destination)
 		if len(errs) > 0 {
@@ -70,97 +83,45 @@ func Sync(source, destination string) error {
 	return nil
 }
 
-// refactor this to make it more readable, pass in the db as well instead of opening it here
-// Write to database after files are done copying, not in here
-// Prune database for deleted items
-func CheckForStaleFiles(path string, files map[string]FileData) (map[string]FileData, error) {
-	db, err := sql.Open("sqlite", "cache.db")
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
+func CheckForStaleFiles(path string, files map[string]FileData) (map[string]CacheUpdate, error) {
+	filesToUpdate := make(map[string]CacheUpdate)
 
 	for key, value := range files {
-		var dbFileSize int64
-		var dbLastModifiedTime int64
-		var dbFileHash string
-
-		err = db.QueryRow(`SELECT size, lastModifiedTime, fileHash 
-		FROM fileHashes 
-		WHERE fileName = ?`, key).Scan(&dbFileSize, &dbLastModifiedTime, &dbFileHash)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		fileHashRecord, err := database.GetFileHashRecord(key)
+		if err != nil {
 			return nil, err
 		}
 
-		if errors.Is(err, sql.ErrNoRows) {
+		if fileHashRecord.Exists {
+			if value.Size != fileHashRecord.FileSize || value.LastModifiedTime.UnixNano() != fileHashRecord.LastModifiedTime {
+				var sourceFileHash string
+				sourceFileHash, err = hashFile(filepath.Join(path, key))
+				if err != nil {
+					return nil, err
+				}
+
+				if sourceFileHash != fileHashRecord.FileHash {
+					filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
+				} else {
+					err = database.UpdateFileHashMetadata(key, value.Size, value.LastModifiedTime)
+
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		} else {
 			var fileHash string
 			fileHash, err = hashFile(filepath.Join(path, key))
 			if err != nil {
 				return nil, err
 			}
 
-			_, err = db.Exec(`INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
-					VALUES (?, ?, ?, ?)`, key, value.Size, value.LastModifiedTime.UnixNano(), fileHash)
-
-			if err != nil {
-				return nil, err
-			}
-
-			// add to map
-		} else {
-			if value.Size != dbFileSize {
-				var sourceFileHash string
-				sourceFileHash, err = hashFile(filepath.Join(path, key))
-				if err != nil {
-					return nil, err
-				}
-
-				_, err = db.Exec(`UPDATE fileHashes 
-									SET fileHash = ?, 
-									lastModifiedTime = ?,
-									size = ?
-									WHERE fileName = ?`, sourceFileHash, value.LastModifiedTime.UnixNano(), value.Size, key)
-
-				if err != nil {
-					return nil, err
-				}
-
-				// add to map
-
-			} else if value.LastModifiedTime.UnixNano() != dbLastModifiedTime {
-				var sourceFileHash string
-				sourceFileHash, err = hashFile(filepath.Join(path, key))
-				if err != nil {
-					return nil, err
-				}
-
-				if sourceFileHash != dbFileHash {
-					_, err = db.Exec(`UPDATE fileHashes 
-									SET fileHash = ?, 
-									lastModifiedTime = ?,
-									size = ?
-									WHERE fileName = ?`, sourceFileHash, value.LastModifiedTime.UnixNano(), value.Size, key)
-
-					if err != nil {
-						return nil, err
-					}
-
-					// add to map
-				} else {
-					_, err = db.Exec(`UPDATE fileHashes 
-									SET lastModifiedTime = ?,
-									size = ?
-									WHERE fileName = ?`, value.LastModifiedTime.UnixNano(), value.Size, key)
-
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
+			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: fileHash, Operation: InsertRecord}
 		}
 	}
 
-	return nil, nil
+	return filesToUpdate, nil
 }
 
 func hashFile(path string) (string, error) {
