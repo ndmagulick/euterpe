@@ -28,8 +28,7 @@ var rootCommand = &cobra.Command{
 
 		config = cfg
 
-		// Validate database
-		err = database.ValidateDatabase()
+		err = database.OpenDatabase()
 		if err != nil {
 			return err
 		}

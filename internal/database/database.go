@@ -16,12 +16,14 @@ type FileHashRecord struct {
 	FileHash         string
 }
 
-func ValidateDatabase() error {
-	db, err := sql.Open("sqlite", "cache.db")
+var db *sql.DB
+
+func OpenDatabase() error {
+	var err error
+	db, err = sql.Open("sqlite", "cache.db")
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
@@ -55,7 +57,13 @@ func ValidateDatabase() error {
 		}
 	}
 
-	return err
+	return nil
+}
+
+func CloseDatabase() {
+	if db != nil {
+		db.Close()
+	}
 }
 
 func GetFileHashRecord(fileName string) (FileHashRecord, error) {

@@ -84,7 +84,7 @@ func Sync(source, destination string) error {
 }
 
 func CheckForStaleFiles(path string, files map[string]FileData) (map[string]CacheUpdate, error) {
-	filesToUpdate := make(map[string]CacheUpdate)
+	cacheUpdates := make(map[string]CacheUpdate)
 
 	for key, value := range files {
 		fileHashRecord, err := database.GetFileHashRecord(key)
@@ -103,10 +103,10 @@ func CheckForStaleFiles(path string, files map[string]FileData) (map[string]Cach
 		}
 
 		if !fileHashRecord.Exists {
-			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
+			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
 
 		} else if sourceFileHash != fileHashRecord.FileHash {
-			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
+			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
 		} else {
 			err = database.UpdateFileHashMetadata(key, value.Size, value.LastModifiedTime)
 
@@ -116,7 +116,7 @@ func CheckForStaleFiles(path string, files map[string]FileData) (map[string]Cach
 		}
 	}
 
-	return filesToUpdate, nil
+	return cacheUpdates, nil
 }
 
 func hashFile(path string) (string, error) {
