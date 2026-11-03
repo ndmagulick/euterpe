@@ -5,8 +5,6 @@ import (
 	"euterpe/internal/settings"
 
 	"github.com/spf13/cobra"
-
-	_ "modernc.org/sqlite"
 )
 
 var config settings.Settings
