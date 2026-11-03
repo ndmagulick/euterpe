@@ -92,32 +92,27 @@ func CheckForStaleFiles(path string, files map[string]FileData) (map[string]Cach
 			return nil, err
 		}
 
-		if fileHashRecord.Exists {
-			if value.Size != fileHashRecord.FileSize || value.LastModifiedTime.UnixNano() != fileHashRecord.LastModifiedTime {
-				var sourceFileHash string
-				sourceFileHash, err = hashFile(filepath.Join(path, key))
-				if err != nil {
-					return nil, err
-				}
+		if fileHashRecord.Exists && value.LastModifiedTime.UnixNano() == fileHashRecord.LastModifiedTime && value.Size == fileHashRecord.FileSize {
+			continue
+		}
 
-				if sourceFileHash != fileHashRecord.FileHash {
-					filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
-				} else {
-					err = database.UpdateFileHashMetadata(key, value.Size, value.LastModifiedTime)
+		var sourceFileHash string
+		sourceFileHash, err = hashFile(filepath.Join(path, key))
+		if err != nil {
+			return nil, err
+		}
 
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
+		if !fileHashRecord.Exists {
+			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
+
+		} else if sourceFileHash != fileHashRecord.FileHash {
+			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
 		} else {
-			var fileHash string
-			fileHash, err = hashFile(filepath.Join(path, key))
+			err = database.UpdateFileHashMetadata(key, value.Size, value.LastModifiedTime)
+
 			if err != nil {
 				return nil, err
 			}
-
-			filesToUpdate[key] = CacheUpdate{FileData: value, Hash: fileHash, Operation: InsertRecord}
 		}
 	}
 
@@ -134,7 +129,7 @@ func hashFile(path string) (string, error) {
 	hash := sha256.New()
 	_, err = io.Copy(hash, file)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	return hex.EncodeToString(hash.Sum(nil)), nil
