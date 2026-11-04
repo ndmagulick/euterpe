@@ -217,6 +217,8 @@ func copyFile(source, destination string) error {
 	}
 
 	defer sourceFile.Close()
+
+	// verify this call will overwrite existing files
 	destinationFile, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
