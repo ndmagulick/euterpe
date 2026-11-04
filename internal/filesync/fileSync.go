@@ -277,5 +277,10 @@ func flushBatch(batch []filecache.CacheUpdate) error {
 		return nil
 	}
 
+	err := filecache.CreateBatch(batch)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
