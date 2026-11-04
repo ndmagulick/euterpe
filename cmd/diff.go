@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"euterpe/internal/filecache"
 	"euterpe/internal/filedata"
 	"euterpe/internal/filesync"
 	"fmt"
@@ -20,12 +21,18 @@ var diffCommand = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		var cacheUpdates map[string]filecache.CacheUpdate
+		cacheUpdates, err = filecache.CheckForStaleFiles(config.SourceFilePath, sourceFiles)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		destinationFiles, err := filesync.ReadDirectory(config.DestinationFilePath)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		filesToDelete, filesToCopy := filesync.DiffDirectories(sourceFiles, destinationFiles)
+		filesToDelete, filesToCopy := filesync.DiffDirectories(sourceFiles, destinationFiles, cacheUpdates)
 
 		printDiff(filesToDelete, filesToCopy)
 	},

@@ -17,11 +17,6 @@ import (
 
 func Sync(source, destination string) error {
 	sourceFiles, err := ReadDirectory(source)
-	_, err = filecache.CheckForStaleFiles(source, sourceFiles)
-	if err != nil {
-		return err
-	}
-
 	var cacheUpdates map[string]filecache.CacheUpdate
 	cacheUpdates, err = filecache.CheckForStaleFiles(source, sourceFiles)
 	if err != nil {
@@ -33,7 +28,7 @@ func Sync(source, destination string) error {
 		return err
 	}
 
-	filesToDelete, filesToCopy := DiffDirectories(sourceFiles, destinationFiles)
+	filesToDelete, filesToCopy := DiffDirectories(sourceFiles, destinationFiles, cacheUpdates)
 	syncSize := calculateSpaceChange(filesToCopy, filesToDelete)
 
 	if syncSize > 0 {
@@ -95,7 +90,7 @@ func ReadDirectory(path string) (map[string]filedata.FileData, error) {
 	return files, nil
 }
 
-func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData) (filesToDelete, filesToCopy []filedata.FileData) {
+func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
 	filesToDelete = []filedata.FileData{}
 	filesToCopy = []filedata.FileData{}
 
@@ -108,7 +103,8 @@ func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles 
 
 	for key, value := range sourceFiles {
 		_, ok := destinationFiles[key]
-		if !ok {
+		_, needsRecopy := cacheUpdates[key]
+		if !ok || needsRecopy {
 			filesToCopy = append(filesToCopy, value)
 		}
 	}
@@ -117,6 +113,7 @@ func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles 
 }
 
 func calculateSpaceChange(filesToCopy, filesToDelete []filedata.FileData) int64 {
+	// TODO do we take a space difference for stale files in this calculation?
 	var filesToCopyTotalSize int64
 	var filesToDeleteTotalSize int64
 

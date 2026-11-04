@@ -82,7 +82,7 @@ func TestDiffDirectories(t *testing.T) {
 	// Act
 	dir1FileData, _ := ReadDirectory(dir1)
 	dir2FileData, _ := ReadDirectory(dir2)
-	filesToDelete, filesToCopy := DiffDirectories(dir1FileData, dir2FileData)
+	filesToDelete, filesToCopy := DiffDirectories(dir1FileData, dir2FileData, nil) // fix this
 
 	// Assert
 	assert.Equal(t, 3, len(filesToDelete))
