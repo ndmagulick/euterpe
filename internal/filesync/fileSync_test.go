@@ -1,6 +1,7 @@
 package filesync
 
 import (
+	"euterpe/internal/filedata"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,13 +100,13 @@ func TestDiffDirectories(t *testing.T) {
 func TestCalculateSpaceChange(t *testing.T) {
 	testCases := []struct {
 		testCase      string
-		filesToCopy   []FileData
-		filesToDelete []FileData
+		filesToCopy   []filedata.FileData
+		filesToDelete []filedata.FileData
 		expected      int64
 	}{
-		{"filesToCopy is larger", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.wav", Size: 10}}, 15},
-		{"filesToDelete is larger", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.flac", Size: 250}}, -225},
-		{"filesToCopy and filesToDelete are equal", []FileData{{Name: "test.mp3", Size: 25}}, []FileData{{Name: "test.ogg", Size: 25}}, 0},
+		{"filesToCopy is larger", []filedata.FileData{{Name: "test.mp3", Size: 25}}, []filedata.FileData{{Name: "test.wav", Size: 10}}, 15},
+		{"filesToDelete is larger", []filedata.FileData{{Name: "test.mp3", Size: 25}}, []filedata.FileData{{Name: "test.flac", Size: 250}}, -225},
+		{"filesToCopy and filesToDelete are equal", []filedata.FileData{{Name: "test.mp3", Size: 25}}, []filedata.FileData{{Name: "test.ogg", Size: 25}}, 0},
 	}
 
 	for _, testCase := range testCases {
@@ -181,7 +182,7 @@ func generateFiles(filePath string, fileList []dummyFile) error {
 	return nil
 }
 
-func fileDataListContainsFileName(name string, fileDataList []FileData) bool {
+func fileDataListContainsFileName(name string, fileDataList []filedata.FileData) bool {
 	for _, value := range fileDataList {
 		if value.Name == name {
 			return true
