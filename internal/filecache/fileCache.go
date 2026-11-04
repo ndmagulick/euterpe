@@ -59,6 +59,21 @@ func CheckForStaleFiles(path string, files map[string]filedata.FileData) (map[st
 	return cacheUpdates, nil
 }
 
+func CreateBatch(updates []CacheUpdate) error {
+	batch := make([]database.BatchRecord, 0, len(updates))
+	for _, update := range updates {
+		batch = append(batch, database.BatchRecord{
+			Name:         update.FileData.Name,
+			Size:         update.FileData.Size,
+			ModifiedTime: update.FileData.LastModifiedTime.UnixNano(),
+			FileHash:     update.Hash,
+			IsInsert:     update.Operation == InsertRecord,
+		})
+	}
+
+	return database.ApplyBatch(batch)
+}
+
 func hashFile(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {

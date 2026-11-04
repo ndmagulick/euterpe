@@ -15,6 +15,11 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
+type copyResult struct {
+	FileData filedata.FileData
+	Err      error
+}
+
 func Sync(source, destination string) error {
 	sourceFiles, err := ReadDirectory(source)
 	var cacheUpdates map[string]filecache.CacheUpdate
@@ -46,9 +51,9 @@ func Sync(source, destination string) error {
 		}
 	}
 
-	if len(filesToCopy) > 0 || len(cacheUpdates) > 0 {
+	if len(filesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		errs := copyFilesConcurrent(filesToCopy, source, destination)
+		errs := copyFilesConcurrent(filesToCopy, cacheUpdates, source, destination)
 		if len(errs) > 0 {
 			return fmt.Errorf("%d files failed to copy. See log for details", len(errs))
 		}
@@ -158,40 +163,65 @@ func deleteFiles(filesToDelete []filedata.FileData, path string) error {
 	return nil
 }
 
-func copyFilesConcurrent(filesToCopy []filedata.FileData, source, destination string) []error {
+func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate, source, destination string) []error {
 	const workerCount = 2 // We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
+	const cacheBatchSize = 100
 	jobs := make(chan filedata.FileData)
-	errorChan := make(chan error)
+	results := make(chan copyResult)
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(workerCount)
 	for range workerCount {
-		go copyFileWorker(jobs, errorChan, source, destination, &waitGroup)
+		go copyFileWorker(jobs, results, source, destination, &waitGroup)
 	}
 
-	for _, file := range filesToCopy {
-		jobs <- file
-	}
+	go func() {
+		for _, file := range filesToCopy {
+			jobs <- file
+		}
 
-	close(jobs)
+		close(jobs)
+	}()
 
 	go func() {
 		waitGroup.Wait()
-		close(errorChan)
+		close(results)
 	}()
 
 	var errors []error
+	batch := make([]filecache.CacheUpdate, 0, cacheBatchSize)
 
-	for err := range errorChan {
-		if err != nil {
-			errors = append(errors, err)
+	for result := range results {
+		if result.Err != nil {
+			errors = append(errors, result.Err)
+			continue
 		}
+
+		update, ok := cacheUpdates[result.FileData.Name]
+		if !ok {
+			continue
+		}
+
+		batch = append(batch, update)
+		if len(batch) >= cacheBatchSize {
+			err := flushBatch(batch)
+			if err != nil {
+				errors = append(errors, err)
+			}
+			batch = batch[:0]
+		}
+	}
+
+	// Flush remaining batch after jobs complete
+	err := flushBatch(batch)
+	if err != nil {
+		errors = append(errors, err)
 	}
 
 	return errors
 }
 
-func copyFileWorker(jobs <-chan filedata.FileData, errors chan<- error, source string, destination string, wg *sync.WaitGroup) {
+func copyFileWorker(jobs <-chan filedata.FileData, results chan<- copyResult, source string, destination string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	check := color.GreenString("✓")
 
@@ -201,11 +231,11 @@ func copyFileWorker(jobs <-chan filedata.FileData, errors chan<- error, source s
 		err := copyFile(sourceFilePath, destinationFilePath)
 		if err != nil {
 			log.Printf("Failed to copy %s: %v", file.Name, err)
-			errors <- err
-			continue
+		} else {
+			fmt.Printf("%s copied %s\n", check, file.Name)
 		}
 
-		fmt.Printf("%s copied %s\n", check, file.Name)
+		results <- copyResult{FileData: file, Err: err}
 	}
 }
 
@@ -237,6 +267,14 @@ func copyFile(source, destination string) error {
 	if err != nil {
 		os.Remove(destination)
 		return fmt.Errorf("copyFile: %w", err)
+	}
+
+	return nil
+}
+
+func flushBatch(batch []filecache.CacheUpdate) error {
+	if len(batch) == 0 {
+		return nil
 	}
 
 	return nil

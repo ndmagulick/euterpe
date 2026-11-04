@@ -16,6 +16,14 @@ type FileHashRecord struct {
 	FileHash         string
 }
 
+type BatchRecord struct {
+	Name         string
+	Size         int64
+	ModifiedTime int64
+	FileHash     string
+	IsInsert     bool
+}
+
 var db *sql.DB
 
 func OpenDatabase() error {
@@ -87,27 +95,6 @@ func GetFileHashRecord(fileName string) (FileHashRecord, error) {
 	return FileHashRecord{Exists: true, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}, nil
 }
 
-func InsertFileHashRecord(fileName string, fileSize int64, lastModifiedTime time.Time, fileHash string) error {
-	query := `INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
-				VALUES (?, ?, ?, ?)`
-
-	_, err := db.Exec(query, fileName, fileSize, lastModifiedTime.UnixNano(), fileHash)
-
-	return err
-}
-
-func UpdateFileHashRecord(fileName string, fileSize int64, lastModifiedTime time.Time, fileHash string) error {
-	query := `UPDATE fileHashes 
-			SET fileHash = ?, 
-			lastModifiedTime = ?,
-			size = ?
-			WHERE fileName = ?`
-
-	_, err := db.Exec(query, fileHash, lastModifiedTime.UnixNano(), fileSize, fileName)
-
-	return err
-}
-
 func UpdateFileHashMetadata(fileName string, fileSize int64, lastModifiedTime time.Time) error {
 	query := `UPDATE fileHashes 
 				SET lastModifiedTime = ?,
@@ -125,4 +112,57 @@ func DeleteFileHashRecord(fileName string) error {
 	_, err := db.Exec(query, fileName)
 
 	return err
+}
+
+func ApplyBatch(batchRecords []BatchRecord) error {
+	transaction, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer transaction.Rollback()
+	insertStatement, err := transaction.Prepare(`INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
+				VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer insertStatement.Close()
+
+	updateStatement, err := transaction.Prepare(`UPDATE fileHashes 
+			SET fileHash = ?, 
+			lastModifiedTime = ?,
+			size = ?
+			WHERE fileName = ?`)
+	if err != nil {
+		return err
+	}
+	defer updateStatement.Close()
+
+	for _, batchRecord := range batchRecords {
+		if batchRecord.IsInsert {
+			_, err = insertStatement.Exec(batchRecord.Name, batchRecord.Size, batchRecord.ModifiedTime, batchRecord.FileHash)
+			if err != nil {
+				return fmt.Errorf("Cache insert failed for file %q: %w", batchRecord.Name, err)
+			}
+			continue
+		}
+
+		var result sql.Result
+		result, err = updateStatement.Exec(batchRecord.FileHash, batchRecord.ModifiedTime, batchRecord.Size, batchRecord.Name)
+		if err != nil {
+			return fmt.Errorf("Cache update failed for file %q: %w", batchRecord.Name, err)
+		}
+
+		var rowsAffected int64
+		rowsAffected, err = result.RowsAffected()
+		if err != nil {
+			return nil
+		}
+
+		if rowsAffected == 0 {
+			return fmt.Errorf("Cache insert failed for file %q. No matching rows", batchRecord.Name)
+		}
+	}
+
+	return transaction.Commit()
 }
