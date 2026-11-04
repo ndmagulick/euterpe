@@ -218,13 +218,10 @@ func copyFile(source, destination string) error {
 
 	defer sourceFile.Close()
 
-	// verify this call will overwrite existing files
 	destinationFile, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
-
-	defer destinationFile.Close()
 
 	_, err = io.Copy(destinationFile, sourceFile)
 	if err != nil {
@@ -233,6 +230,12 @@ func copyFile(source, destination string) error {
 
 	err = destinationFile.Sync()
 	if err != nil {
+		return fmt.Errorf("copyFile: %w", err)
+	}
+
+	err = destinationFile.Close()
+	if err != nil {
+		os.Remove(destination)
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
