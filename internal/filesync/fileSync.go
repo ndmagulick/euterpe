@@ -59,6 +59,8 @@ func Sync(source, destination string) error {
 		}
 	}
 
+	// TODO - prune records from cache for files that no longer exist on PC library
+
 	return nil
 }
 
