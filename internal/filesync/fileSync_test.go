@@ -111,7 +111,7 @@ func TestCalculateSpaceChange(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.testCase, func(t *testing.T) {
-			actual := calculateSpaceChange(testCase.filesToCopy, testCase.filesToDelete)
+			actual := calculateSpaceChange(testCase.filesToCopy, testCase.filesToDelete, nil)
 			assert.Equal(t, testCase.expected, actual)
 		})
 	}

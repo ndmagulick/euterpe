@@ -34,7 +34,7 @@ func Sync(source, destination string) error {
 	}
 
 	filesToDelete, filesToCopy := DiffDirectories(sourceFiles, destinationFiles, cacheUpdates)
-	syncSize := calculateSpaceChange(filesToCopy, filesToDelete)
+	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
 
 	if syncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, syncSize)
@@ -117,13 +117,20 @@ func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles 
 	return filesToDelete, filesToCopy
 }
 
-func calculateSpaceChange(filesToCopy, filesToDelete []filedata.FileData) int64 {
-	// TODO do we take a space difference for stale files in this calculation?
+func calculateSpaceChange(filesToCopy, filesToDelete []filedata.FileData, destinationFiles map[string]filedata.FileData) int64 {
 	var filesToCopyTotalSize int64
 	var filesToDeleteTotalSize int64
 
 	for _, data := range filesToCopy {
-		filesToCopyTotalSize += data.Size
+		destinationFile, ok := destinationFiles[data.Name]
+
+		// We need to see if the existing file is already on the device and take the difference in case we need to re-copy
+		if ok {
+			filesToCopyTotalSize += data.Size - destinationFile.Size
+		} else {
+			filesToCopyTotalSize += data.Size
+		}
+
 	}
 
 	for _, data := range filesToDelete {
