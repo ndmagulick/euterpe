@@ -2,8 +2,7 @@
 
 ![Euterpe](https://upload.wikimedia.org/wikipedia/commons/6/65/Musa3-euterpe-vs.jpg)
 
-This is a personal project meant to make syncing my music library to my mp3 player easier/faster and to learn Go.  
-Starting out by just making a simple program, then I want to make a full CLI, and then eventually make a full GUI where you can also play and/or manage music.
+This is a personal project meant to make syncing my music library to my mp3 player easier/faster and to learn Go.
 
 ### THIS REPOSITORY CONTAINS NO AI GENERATED CODE
 
@@ -17,11 +16,7 @@ Starting out by just making a simple program, then I want to make a full CLI, an
 
 ## Things To Do Still
 
-- Create database to make diffing more accurate and faster
 - Make a proper README
-
-#### CLI Functionality (incomplete)
-
 - Print space
 - Add command to back up prior to sync
 - Add command to restore
