@@ -16,6 +16,7 @@ This is a personal project meant to make syncing my music library to my mp3 play
 
 ## Things To Do Still
 
+- Fix the tests
 - Make a proper README
 - Print space
 - Add command to back up prior to sync
