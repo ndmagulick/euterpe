@@ -49,9 +49,9 @@ func OpenDatabase() error {
 	}
 
 	if count > 0 {
-		fmt.Printf("Database is good\n")
+		fmt.Printf("Cache exists\n")
 	} else {
-		fmt.Printf("Database does not exist, generating...\n")
+		fmt.Printf("Generating cache...\n")
 
 		_, err = db.Exec(`CREATE TABLE fileHashes (
 							fileName TEXT PRIMARY KEY,
@@ -102,14 +102,6 @@ func UpdateFileHashMetadata(fileName string, fileSize int64, lastModifiedTime ti
 				WHERE fileName = ?`
 
 	_, err := db.Exec(query, lastModifiedTime.UnixNano(), fileSize, fileName)
-
-	return err
-}
-
-func DeleteFileHashRecord(fileName string) error {
-	query := `DELETE FROM fileHashes WHERE fileName = ?`
-
-	_, err := db.Exec(query, fileName)
 
 	return err
 }
