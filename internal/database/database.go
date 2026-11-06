@@ -119,8 +119,8 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 	if err != nil {
 		return err
 	}
-
 	defer transaction.Rollback()
+
 	insertStatement, err := transaction.Prepare(`INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
 				VALUES (?, ?, ?, ?)`)
 	if err != nil {
@@ -160,7 +160,67 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		}
 
 		if rowsAffected == 0 {
-			return fmt.Errorf("Cache insert failed for file %q. No matching rows", batchRecord.Name)
+			return fmt.Errorf("Cache update failed for file %q. No matching rows", batchRecord.Name)
+		}
+	}
+
+	return transaction.Commit()
+}
+
+func GetAllFileNames() ([]string, error) {
+	query := `SELECT fileName FROM fileHashes`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	fileNameList := make([]string, 0)
+
+	for rows.Next() {
+		var fileName string
+		err = rows.Scan(&fileName)
+		if err != nil {
+			return nil, err
+		}
+
+		fileNameList = append(fileNameList, fileName)
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return fileNameList, err
+}
+
+func DeleteRecords(orphanedFiles []string) error {
+	if len(orphanedFiles) == 0 {
+		return nil
+	}
+
+	transaction, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer transaction.Rollback()
+
+	deleteStatement, err := transaction.Prepare(`DELETE FROM fileHashes WHERE fileName = ?`)
+	if err != nil {
+		return err
+	}
+	defer deleteStatement.Close()
+
+	for _, orphanedFile := range orphanedFiles {
+		_, err = deleteStatement.Exec(orphanedFile)
+		if err != nil {
+			return fmt.Errorf("Cache pruning failed for file %q: %w", orphanedFile, err)
 		}
 	}
 

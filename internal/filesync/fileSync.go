@@ -59,7 +59,10 @@ func Sync(source, destination string) error {
 		}
 	}
 
-	// TODO - prune records from cache for files that no longer exist on PC library
+	err = filecache.PruneCache(sourceFiles)
+	if err != nil {
+		return fmt.Errorf("Error cleaning cache: %w", err)
+	}
 
 	return nil
 }
@@ -267,7 +270,7 @@ func copyFile(source, destination string) error {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
-	err = destinationFile.Sync()
+	err = destinationFile.Sync() // does this slow this down?
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}

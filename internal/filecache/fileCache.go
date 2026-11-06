@@ -44,7 +44,6 @@ func CheckForStaleFiles(path string, files map[string]filedata.FileData) (map[st
 
 		if !fileHashRecord.Exists {
 			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
-
 		} else if sourceFileHash != fileHashRecord.FileHash {
 			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
 		} else {
@@ -72,6 +71,29 @@ func CreateBatch(updates []CacheUpdate) error {
 	}
 
 	return database.ApplyBatch(batch)
+}
+
+func PruneCache(sourceFiles map[string]filedata.FileData) error {
+	filesInCache, err := database.GetAllFileNames()
+	if err != nil {
+		return err
+	}
+
+	orphanedFiles := make([]string, 0)
+
+	for _, file := range filesInCache {
+		_, ok := sourceFiles[file]
+		if !ok {
+			orphanedFiles = append(orphanedFiles, file)
+		}
+	}
+
+	err = database.DeleteRecords(orphanedFiles)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func hashFile(path string) (string, error) {
