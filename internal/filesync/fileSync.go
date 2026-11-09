@@ -61,10 +61,10 @@ func Sync(source, destination string) error {
 		}
 	}
 
-	// err = filecache.PruneCache(sourceFiles)
-	// if err != nil {
-	// 	return fmt.Errorf("Error cleaning cache: %w", err)
-	// }
+	err := filecache.PruneCache(source)
+	if err != nil {
+		return fmt.Errorf("Error cleaning cache: %w", err)
+	}
 
 	return nil
 }

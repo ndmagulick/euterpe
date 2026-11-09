@@ -3,10 +3,6 @@ package folderdiff
 import (
 	"euterpe/internal/filecache"
 	"euterpe/internal/filedata"
-	"euterpe/internal/filter"
-	"fmt"
-	"os"
-	"path/filepath"
 )
 
 type DiffResult struct {
@@ -18,7 +14,7 @@ type DiffResult struct {
 }
 
 func Diff(sourcePath, destinationPath string) DiffResult {
-	sourceFiles, err := readDirectory(sourcePath)
+	sourceFiles, err := filedata.ReadDirectory(sourcePath)
 	if err != nil {
 		return DiffResult{Err: err}
 	}
@@ -28,7 +24,7 @@ func Diff(sourcePath, destinationPath string) DiffResult {
 		return DiffResult{Err: err}
 	}
 
-	destinationFiles, err := readDirectory(destinationPath)
+	destinationFiles, err := filedata.ReadDirectory(destinationPath)
 	if err != nil {
 		return DiffResult{Err: err}
 	}
@@ -42,39 +38,6 @@ func Diff(sourcePath, destinationPath string) DiffResult {
 		CacheUpdates:  cacheUpdates,
 		SyncSize:      syncSize,
 		Err:           nil}
-}
-
-func readDirectory(path string) (map[string]filedata.FileData, error) {
-	directoryEntries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-	}
-
-	files := make(map[string]filedata.FileData)
-
-	for _, file := range directoryEntries {
-		if file.IsDir() {
-			continue
-		}
-
-		extension := filepath.Ext(file.Name())
-		if !filter.IsAudio(extension) {
-			continue
-		}
-
-		fileInfo, err := file.Info()
-		if err != nil {
-			return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-		}
-
-		files[file.Name()] = filedata.FileData{
-			Name:             file.Name(),
-			Size:             fileInfo.Size(),
-			LastModifiedTime: fileInfo.ModTime(),
-		}
-	}
-
-	return files, nil
 }
 
 func diffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
