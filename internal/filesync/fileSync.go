@@ -3,7 +3,7 @@ package filesync
 import (
 	"euterpe/internal/filecache"
 	"euterpe/internal/filedata"
-	"euterpe/internal/filter"
+	"euterpe/internal/folderdiff"
 	"fmt"
 	"io"
 	"log"
@@ -33,128 +33,40 @@ type copyResult struct {
 }
 
 func Sync(source, destination string) error {
-	sourceFiles, err := ReadDirectory(source)
-	var cacheUpdates map[string]filecache.CacheUpdate
-	cacheUpdates, err = filecache.CheckForStaleFiles(source, sourceFiles)
-	if err != nil {
-		return err
+	diffResult := folderdiff.Diff(source, destination)
+	if diffResult.Err != nil {
+		return diffResult.Err
 	}
 
-	destinationFiles, err := ReadDirectory(destination)
-	if err != nil {
-		return err
-	}
-
-	filesToDelete, filesToCopy := DiffDirectories(sourceFiles, destinationFiles, cacheUpdates)
-	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
-
-	if syncSize > 0 {
-		err = checkIfSufficientSpaceExists(destination, syncSize)
+	if diffResult.SyncSize > 0 {
+		err := checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(filesToDelete) > 0 {
+	if len(diffResult.FilesToDelete) > 0 {
 		log.Printf("Deleting files from %s", destination)
-		err := deleteFiles(filesToDelete, destination)
+		err := deleteFiles(diffResult.FilesToDelete, destination)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(filesToCopy) > 0 {
+	if len(diffResult.FilesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		errs := copyFilesConcurrent(filesToCopy, cacheUpdates, source, destination)
+		errs := copyFilesConcurrent(diffResult.FilesToCopy, diffResult.CacheUpdates, source, destination)
 		if len(errs) > 0 {
 			return fmt.Errorf("%d files failed to copy. See log for details", len(errs))
 		}
 	}
 
-	err = filecache.PruneCache(sourceFiles)
-	if err != nil {
-		return fmt.Errorf("Error cleaning cache: %w", err)
-	}
+	// err = filecache.PruneCache(sourceFiles)
+	// if err != nil {
+	// 	return fmt.Errorf("Error cleaning cache: %w", err)
+	// }
 
 	return nil
-}
-
-func ReadDirectory(path string) (map[string]filedata.FileData, error) {
-	directoryEntries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-	}
-
-	files := make(map[string]filedata.FileData)
-
-	for _, file := range directoryEntries {
-		if file.IsDir() {
-			continue
-		}
-
-		extension := filepath.Ext(file.Name())
-		if !filter.IsAudio(extension) {
-			continue
-		}
-
-		fileInfo, err := file.Info()
-		if err != nil {
-			return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-		}
-
-		files[file.Name()] = filedata.FileData{
-			Name:             file.Name(),
-			Size:             fileInfo.Size(),
-			LastModifiedTime: fileInfo.ModTime(),
-		}
-	}
-
-	return files, nil
-}
-
-func DiffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
-	filesToDelete = []filedata.FileData{}
-	filesToCopy = []filedata.FileData{}
-
-	for key, value := range destinationFiles {
-		_, ok := sourceFiles[key]
-		if !ok {
-			filesToDelete = append(filesToDelete, value)
-		}
-	}
-
-	for key, value := range sourceFiles {
-		_, ok := destinationFiles[key]
-		_, needsRecopy := cacheUpdates[key]
-		if !ok || needsRecopy {
-			filesToCopy = append(filesToCopy, value)
-		}
-	}
-
-	return filesToDelete, filesToCopy
-}
-
-func calculateSpaceChange(filesToCopy, filesToDelete []filedata.FileData, destinationFiles map[string]filedata.FileData) int64 {
-	var filesToCopyTotalSize int64
-	var filesToDeleteTotalSize int64
-
-	for _, data := range filesToCopy {
-		destinationFile, ok := destinationFiles[data.Name]
-
-		// We need to see if the existing file is already on the device and take the difference in case we need to re-copy
-		if ok {
-			filesToCopyTotalSize += data.Size - destinationFile.Size
-		} else {
-			filesToCopyTotalSize += data.Size
-		}
-
-	}
-
-	for _, data := range filesToDelete {
-		filesToDeleteTotalSize += data.Size
-	}
-
-	return filesToCopyTotalSize - filesToDeleteTotalSize
 }
 
 func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
