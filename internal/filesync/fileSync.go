@@ -15,6 +15,18 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
+type readerOnly struct{ io.Reader }
+type writerOnly struct{ io.Writer }
+
+const bufferSize = 1 << 21 // 2MB buffer
+
+var bufferPool = sync.Pool{
+	New: func() any {
+		buffer := make([]byte, bufferSize)
+		return &buffer
+	},
+}
+
 type copyResult struct {
 	FileData filedata.FileData
 	Err      error
@@ -176,7 +188,9 @@ func deleteFiles(filesToDelete []filedata.FileData, path string) error {
 }
 
 func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate, source, destination string) []error {
-	const workerCount = 2 // We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
+	// We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
+	// NOTE: The bottleneck may reside in the MP3 player depending on its file system and/or how it writes data internally
+	const workerCount = 2
 	const cacheBatchSize = 100
 	jobs := make(chan filedata.FileData)
 	results := make(chan copyResult)
@@ -252,6 +266,9 @@ func copyFileWorker(jobs <-chan filedata.FileData, results chan<- copyResult, so
 }
 
 func copyFile(source, destination string) error {
+	bufferPointer := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(bufferPointer)
+
 	sourceFile, err := os.Open(source)
 
 	if err != nil {
@@ -265,12 +282,14 @@ func copyFile(source, destination string) error {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
-	_, err = io.Copy(destinationFile, sourceFile)
+	_, err = io.CopyBuffer(writerOnly{destinationFile}, readerOnly{sourceFile}, *bufferPointer)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
-	err = destinationFile.Sync() // does this slow this down?
+	// Calls to Sync() cause a slowdown while copying, but ensures data is intact in the event of a power failure or device is removed suddenly
+	// Can possibly add a --fast flag to bypass but with warning
+	err = destinationFile.Sync()
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
