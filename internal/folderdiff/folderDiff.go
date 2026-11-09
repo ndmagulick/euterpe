@@ -11,6 +11,35 @@ type DiffResult struct {
 	SyncSize      int64
 }
 
+type DiffInputs struct {
+	SourceFiles      map[string]filedata.FileData
+	DestinationFiles map[string]filedata.FileData
+	CacheUpdates     map[string]filecache.CacheUpdate
+}
+
+func PrepareDiffInputs(source, destination string) (DiffInputs, error) {
+	sourceFiles, err := filedata.ReadDirectory(source)
+	if err != nil {
+		return DiffInputs{}, err
+	}
+
+	destinationFiles, err := filedata.ReadDirectory(destination)
+	if err != nil {
+		return DiffInputs{}, err
+	}
+
+	cacheUpdates, err := filecache.CheckForStaleFiles(source, sourceFiles)
+	if err != nil {
+		return DiffInputs{}, err
+	}
+
+	return DiffInputs{
+		SourceFiles:      sourceFiles,
+		DestinationFiles: destinationFiles,
+		CacheUpdates:     cacheUpdates,
+	}, nil
+}
+
 func DiffFolderContents(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
 	filesToDelete, filesToCopy := compareContents(sourceFiles, destinationFiles, cacheUpdates)
 	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
