@@ -1,9 +1,9 @@
 package filesync
 
 import (
+	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
 	"euterpe/internal/filedata"
-	"euterpe/internal/folderdiff"
 	"fmt"
 	"io"
 	"log"
@@ -33,12 +33,12 @@ type copyResult struct {
 }
 
 func Sync(source, destination string) error {
-	diffInputs, err := folderdiff.PrepareDiffInputs(source, destination)
+	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
 	if err != nil {
 		return err
 	}
 
-	diffResult := folderdiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
+	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {

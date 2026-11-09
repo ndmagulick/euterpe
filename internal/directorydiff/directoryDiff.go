@@ -1,4 +1,4 @@
-package folderdiff
+package directorydiff
 
 import (
 	"euterpe/internal/filecache"
