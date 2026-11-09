@@ -20,7 +20,7 @@ var diffCommand = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		diffResult := folderdiff.DiffFolderContents(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
+		diffResult := folderdiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 		printDiff(diffResult.FilesToDelete, diffResult.FilesToCopy, diffResult.SyncSize)
 	},
 }

@@ -38,8 +38,7 @@ func Sync(source, destination string) error {
 		return err
 	}
 
-	diffResult := folderdiff.DiffFolderContents(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
-
+	diffResult := folderdiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {

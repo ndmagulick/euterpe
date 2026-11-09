@@ -40,7 +40,7 @@ func PrepareDiffInputs(source, destination string) (DiffInputs, error) {
 	}, nil
 }
 
-func DiffFolderContents(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
+func Diff(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
 	filesToDelete, filesToCopy := compareContents(sourceFiles, destinationFiles, cacheUpdates)
 	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
 
