@@ -8,39 +8,20 @@ import (
 type DiffResult struct {
 	FilesToDelete []filedata.FileData
 	FilesToCopy   []filedata.FileData
-	CacheUpdates  map[string]filecache.CacheUpdate
 	SyncSize      int64
-	Err           error
 }
 
-func Diff(sourcePath, destinationPath string) DiffResult {
-	sourceFiles, err := filedata.ReadDirectory(sourcePath)
-	if err != nil {
-		return DiffResult{Err: err}
-	}
-
-	cacheUpdates, err := filecache.CheckForStaleFiles(sourcePath, sourceFiles)
-	if err != nil {
-		return DiffResult{Err: err}
-	}
-
-	destinationFiles, err := filedata.ReadDirectory(destinationPath)
-	if err != nil {
-		return DiffResult{Err: err}
-	}
-
-	filesToDelete, filesToCopy := diffDirectories(sourceFiles, destinationFiles, cacheUpdates)
+func DiffFolderContents(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
+	filesToDelete, filesToCopy := compareContents(sourceFiles, destinationFiles, cacheUpdates)
 	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
 
 	return DiffResult{
 		FilesToDelete: filesToDelete,
 		FilesToCopy:   filesToCopy,
-		CacheUpdates:  cacheUpdates,
-		SyncSize:      syncSize,
-		Err:           nil}
+		SyncSize:      syncSize}
 }
 
-func diffDirectories(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
+func compareContents(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
 	filesToDelete = []filedata.FileData{}
 	filesToCopy = []filedata.FileData{}
 

@@ -33,13 +33,25 @@ type copyResult struct {
 }
 
 func Sync(source, destination string) error {
-	diffResult := folderdiff.Diff(source, destination)
-	if diffResult.Err != nil {
-		return diffResult.Err
+	sourceFiles, err := filedata.ReadDirectory(source)
+	if err != nil {
+		return err
 	}
 
+	destinationFiles, err := filedata.ReadDirectory(destination)
+	if err != nil {
+		return err
+	}
+
+	cacheUpdates, err := filecache.CheckForStaleFiles(source, sourceFiles)
+	if err != nil {
+		return err
+	}
+
+	diffResult := folderdiff.DiffFolderContents(sourceFiles, destinationFiles, cacheUpdates)
+
 	if diffResult.SyncSize > 0 {
-		err := checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
+		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {
 			return err
 		}
@@ -47,7 +59,7 @@ func Sync(source, destination string) error {
 
 	if len(diffResult.FilesToDelete) > 0 {
 		log.Printf("Deleting files from %s", destination)
-		err := deleteFiles(diffResult.FilesToDelete, destination)
+		err = deleteFiles(diffResult.FilesToDelete, destination)
 		if err != nil {
 			return err
 		}
@@ -55,13 +67,13 @@ func Sync(source, destination string) error {
 
 	if len(diffResult.FilesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		errs := copyFilesConcurrent(diffResult.FilesToCopy, diffResult.CacheUpdates, source, destination)
+		errs := copyFilesConcurrent(diffResult.FilesToCopy, cacheUpdates, source, destination)
 		if len(errs) > 0 {
 			return fmt.Errorf("%d files failed to copy. See log for details", len(errs))
 		}
 	}
 
-	err := filecache.PruneCache(source)
+	err = filecache.PruneCache(sourceFiles)
 	if err != nil {
 		return fmt.Errorf("Error cleaning cache: %w", err)
 	}

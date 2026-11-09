@@ -73,11 +73,7 @@ func CreateBatch(updates []CacheUpdate) error {
 	return database.ApplyBatch(batch)
 }
 
-func PruneCache(sourcePath string) error {
-	sourceFiles, err := filedata.ReadDirectory(sourcePath)
-	if err != nil {
-		return err
-	}
+func PruneCache(sourceFiles map[string]filedata.FileData) error {
 	filesInCache, err := database.GetAllFileNames()
 	if err != nil {
 		return err

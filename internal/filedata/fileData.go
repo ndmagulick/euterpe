@@ -14,7 +14,6 @@ type FileData struct {
 	LastModifiedTime time.Time
 }
 
-// TODO revisit this, this might be in the wrong place
 func ReadDirectory(path string) (map[string]FileData, error) {
 	directoryEntries, err := os.ReadDir(path)
 	if err != nil {
