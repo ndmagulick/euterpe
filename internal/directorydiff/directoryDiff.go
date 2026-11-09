@@ -63,7 +63,8 @@ func compareContents(sourceFiles map[string]filedata.FileData, destinationFiles 
 
 	for key, value := range sourceFiles {
 		_, ok := destinationFiles[key]
-		_, needsRecopy := cacheUpdates[key]
+		update, existsInCacheUpdates := cacheUpdates[key]
+		needsRecopy := existsInCacheUpdates && (update.Operation == filecache.InsertRecord || update.Operation == filecache.UpdateRecordHash)
 		if !ok || needsRecopy {
 			filesToCopy = append(filesToCopy, value)
 		}

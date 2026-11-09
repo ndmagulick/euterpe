@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -93,17 +92,6 @@ func GetFileHashRecord(fileName string) (FileHashRecord, error) {
 	}
 
 	return FileHashRecord{Exists: true, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}, nil
-}
-
-func UpdateFileHashMetadata(fileName string, fileSize int64, lastModifiedTime time.Time) error {
-	query := `UPDATE fileHashes 
-				SET lastModifiedTime = ?,
-				size = ?
-				WHERE fileName = ?`
-
-	_, err := db.Exec(query, lastModifiedTime.UnixNano(), fileSize, fileName)
-
-	return err
 }
 
 func ApplyBatch(batchRecords []BatchRecord) error {

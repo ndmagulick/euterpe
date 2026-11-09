@@ -14,7 +14,8 @@ type RecordOperation int
 
 const (
 	InsertRecord RecordOperation = iota + 1
-	UpdateRecord
+	UpdateRecordHash
+	UpdateRecordMetadata
 )
 
 type CacheUpdate struct {
@@ -45,13 +46,9 @@ func CheckForStaleFiles(path string, files map[string]filedata.FileData) (map[st
 		if !fileHashRecord.Exists {
 			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
 		} else if sourceFileHash != fileHashRecord.FileHash {
-			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecord}
+			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecordHash}
 		} else {
-			err = database.UpdateFileHashMetadata(key, value.Size, value.LastModifiedTime)
-
-			if err != nil {
-				return nil, err
-			}
+			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecordMetadata}
 		}
 	}
 
