@@ -136,7 +136,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		if rowsAffected == 0 {
@@ -154,6 +154,7 @@ func GetAllFileNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	fileNameList := make([]string, 0)
 
@@ -165,11 +166,6 @@ func GetAllFileNames() ([]string, error) {
 		}
 
 		fileNameList = append(fileNameList, fileName)
-	}
-
-	err = rows.Close()
-	if err != nil {
-		return nil, err
 	}
 
 	err = rows.Err()
