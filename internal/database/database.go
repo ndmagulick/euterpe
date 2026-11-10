@@ -2,14 +2,13 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	_ "modernc.org/sqlite"
 )
 
 type FileHashRecord struct {
-	Exists           bool
+	FileName         string
 	FileSize         int64
 	LastModifiedTime int64
 	FileHash         string
@@ -55,27 +54,6 @@ func CloseDatabase() {
 	if db != nil {
 		db.Close()
 	}
-}
-
-func GetFileHashRecord(fileName string) (FileHashRecord, error) {
-	var dbFileSize int64
-	var dbLastModifiedTime int64
-	var dbFileHash string
-	query := `SELECT size, lastModifiedTime, fileHash 
-			FROM fileHashes 
-			WHERE fileName = ?`
-
-	err := db.QueryRow(query, fileName).Scan(&dbFileSize, &dbLastModifiedTime, &dbFileHash)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return FileHashRecord{}, nil
-	}
-
-	if err != nil {
-		return FileHashRecord{}, err
-	}
-
-	return FileHashRecord{Exists: true, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}, nil
 }
 
 func ApplyBatch(batchRecords []BatchRecord) error {
@@ -158,6 +136,36 @@ func GetAllFileNames() ([]string, error) {
 	}
 
 	return fileNameList, err
+}
+
+func GetAllFiles() (map[string]FileHashRecord, error) {
+	query := `SELECT fileName, size, lastModifiedTime, fileHash
+			  FROM fileHashes`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	filesInCache := make(map[string]FileHashRecord)
+
+	for rows.Next() {
+		var dbFileName string
+		var dbFileSize int64
+		var dbLastModifiedTime int64
+		var dbFileHash string
+		err = rows.Scan(&dbFileName, &dbFileSize, &dbLastModifiedTime, &dbFileHash)
+
+		filesInCache[dbFileName] = FileHashRecord{FileName: dbFileName, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return filesInCache, err
 }
 
 func DeleteRecords(orphanedFiles []string) error {

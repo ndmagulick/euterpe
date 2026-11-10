@@ -26,14 +26,15 @@ type CacheUpdate struct {
 
 func CheckForStaleFiles(path string, files map[string]fileio.FileData) (map[string]CacheUpdate, error) {
 	cacheUpdates := make(map[string]CacheUpdate)
+	filesInCache, err := database.GetAllFiles()
+	if err != nil {
+		return nil, err
+	}
 
 	for key, value := range files {
-		fileHashRecord, err := database.GetFileHashRecord(key)
-		if err != nil {
-			return nil, err
-		}
+		fileHashRecord, exists := filesInCache[key]
 
-		if fileHashRecord.Exists && value.LastModifiedTime.UnixNano() == fileHashRecord.LastModifiedTime && value.Size == fileHashRecord.FileSize {
+		if exists && value.LastModifiedTime.UnixNano() == fileHashRecord.LastModifiedTime && value.Size == fileHashRecord.FileSize {
 			continue
 		}
 
@@ -43,7 +44,7 @@ func CheckForStaleFiles(path string, files map[string]fileio.FileData) (map[stri
 			return nil, err
 		}
 
-		if !fileHashRecord.Exists {
+		if !exists {
 			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: InsertRecord}
 		} else if sourceFileHash != fileHashRecord.FileHash {
 			cacheUpdates[key] = CacheUpdate{FileData: value, Hash: sourceFileHash, Operation: UpdateRecordHash}
