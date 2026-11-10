@@ -7,7 +7,10 @@ import (
 	"euterpe/internal/fileio"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
@@ -84,7 +87,13 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 	var copyResults []fileio.CopyResult
 	if len(filesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination)
+		copySize := calculateCopySize(filesToCopy)
+		bar := createProgressBar(copySize)
+		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, func(bytesCopied int64) {
+			_ = bar.Add64(bytesCopied)
+		})
+
+		_ = bar.Finish()
 	}
 
 	return copyResults, nil
@@ -123,4 +132,24 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 	}
 
 	return cacheErrors
+}
+
+// Progress bar setup functions
+func calculateCopySize(filesToCopy []fileio.FileData) int64 {
+	var total int64
+	for _, fileToCopy := range filesToCopy {
+		total += fileToCopy.Size
+	}
+
+	return total
+}
+
+func createProgressBar(total int64) *progressbar.ProgressBar {
+	return progressbar.NewOptions64(total,
+		progressbar.OptionSetDescription("copying"),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetElapsedTime(true),
+		progressbar.OptionThrottle(100*time.Millisecond),
+		progressbar.OptionSetWriter(os.Stderr),
+	)
 }

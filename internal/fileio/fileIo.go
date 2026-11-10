@@ -13,16 +13,12 @@ import (
 	"github.com/fatih/color"
 )
 
-type readerOnly struct{ io.Reader }
+type ProgressFunc func(bytesCopied int64)
+
 type writerOnly struct{ io.Writer }
-
-const bufferSize = 1 << 21 // 2MB buffer
-
-var bufferPool = sync.Pool{
-	New: func() any {
-		buffer := make([]byte, bufferSize)
-		return &buffer
-	},
+type progressReader struct {
+	io.Reader
+	onProgress ProgressFunc
 }
 
 type CopyResult struct {
@@ -34,6 +30,24 @@ type FileData struct {
 	Name             string
 	Size             int64
 	LastModifiedTime time.Time
+}
+
+const bufferSize = 1 << 21 // 2MB buffer
+
+var bufferPool = sync.Pool{
+	New: func() any {
+		buffer := make([]byte, bufferSize)
+		return &buffer
+	},
+}
+
+func (p progressReader) Read(buffer []byte) (int, error) {
+	bytesRead, err := p.Reader.Read(buffer)
+	if bytesRead > 0 && p.onProgress != nil {
+		p.onProgress(int64(bytesRead))
+	}
+
+	return bytesRead, err
 }
 
 func ReadDirectory(path string) (map[string]FileData, error) {
@@ -86,7 +100,7 @@ func DeleteFiles(filesToDelete []FileData, path string) error {
 	return nil
 }
 
-func CopyFilesConcurrent(filesToCopy []FileData, source, destination string) []CopyResult {
+func CopyFilesConcurrent(filesToCopy []FileData, source, destination string, onProgress ProgressFunc) []CopyResult {
 	// We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
 	// NOTE: The bottleneck may reside in the MP3 player depending on its file system and/or how it writes data internally
 	const workerCount = 2
@@ -97,7 +111,7 @@ func CopyFilesConcurrent(filesToCopy []FileData, source, destination string) []C
 
 	waitGroup.Add(workerCount)
 	for range workerCount {
-		go copyFileWorker(jobs, workerResults, source, destination, &waitGroup)
+		go copyFileWorker(jobs, workerResults, source, destination, onProgress, &waitGroup)
 	}
 
 	go func() {
@@ -120,25 +134,22 @@ func CopyFilesConcurrent(filesToCopy []FileData, source, destination string) []C
 	return finalResults
 }
 
-func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source string, destination string, wg *sync.WaitGroup) {
+func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source string, destination string, onProgress ProgressFunc, wg *sync.WaitGroup) {
 	defer wg.Done()
-	check := color.GreenString("✓")
 
 	for file := range jobs {
 		sourceFilePath := filepath.Join(source, file.Name)
 		destinationFilePath := filepath.Join(destination, file.Name)
-		err := copyFile(sourceFilePath, destinationFilePath)
+		err := copyFile(sourceFilePath, destinationFilePath, onProgress)
 		if err != nil {
 			log.Printf("Failed to copy %s: %v", file.Name, err)
-		} else {
-			fmt.Printf("%s copied %s\n", check, file.Name)
 		}
 
 		results <- CopyResult{FileData: file, Err: err}
 	}
 }
 
-func copyFile(source, destination string) (err error) {
+func copyFile(source, destination string, onProgress ProgressFunc) (err error) {
 	bufferPointer := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(bufferPointer)
 
@@ -165,7 +176,7 @@ func copyFile(source, destination string) (err error) {
 		}
 	}()
 
-	_, err = io.CopyBuffer(writerOnly{destinationFile}, readerOnly{sourceFile}, *bufferPointer)
+	_, err = io.CopyBuffer(writerOnly{destinationFile}, progressReader{sourceFile, onProgress}, *bufferPointer)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
