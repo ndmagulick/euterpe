@@ -1,6 +1,7 @@
 package filesync
 
 import (
+	"errors"
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
@@ -10,40 +11,48 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
-type SyncErrors struct {
+type SyncReport struct {
 	CopyErrors  []error
 	CacheErrors []error
 }
 
-// TODO fold errors, this is a desing smell
-func Sync(source, destination string) (error, SyncErrors) {
+func Sync(source, destination string) (SyncReport, error) {
 	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
 	if err != nil {
-		return err, SyncErrors{}
+		return SyncReport{}, fmt.Errorf("error preparing diff: %w", err)
 	}
 
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {
-			return err, SyncErrors{}
+			return SyncReport{}, err
 		}
 	}
 
 	copyResults, deleteErr := syncFiles(diffResult.FilesToDelete, diffResult.FilesToCopy, source, destination)
 	if deleteErr != nil {
-		return fmt.Errorf("Error deleting file: %w", deleteErr), SyncErrors{}
+		return SyncReport{}, fmt.Errorf("Error deleting files: %w", deleteErr)
 	}
 
-	cacheErrors := syncCache(copyResults, diffInputs.CacheUpdates)
+	var syncReport SyncReport
+	for _, result := range copyResults {
+		if result.Err != nil {
+			syncReport.CopyErrors = append(syncReport.CopyErrors, result.Err)
+		}
+	}
+
+	syncReport.CacheErrors = syncCache(copyResults, diffInputs.CacheUpdates)
 	err = filecache.PruneCache(diffInputs.SourceFiles)
 	if err != nil {
-		cacheErrors = append(cacheErrors, err)
+		syncReport.CacheErrors = append(syncReport.CacheErrors, fmt.Errorf("error pruning cache: %w", err))
 	}
 
-	syncErrors := collectErrors(copyResults, cacheErrors)
+	if len(syncReport.CopyErrors) > 0 {
+		return syncReport, fmt.Errorf("%d of %d failed to copy: %w", len(syncReport.CopyErrors), len(diffResult.FilesToCopy), errors.Join(syncReport.CopyErrors...))
+	}
 
-	return nil, syncErrors
+	return syncReport, nil
 }
 
 func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
@@ -110,18 +119,4 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 	}
 
 	return cacheErrors
-}
-
-func collectErrors(copyResults []fileio.CopyResult, cacheErrors []error) SyncErrors {
-	var syncErrors SyncErrors
-
-	for _, result := range copyResults {
-		if result.Err != nil {
-			syncErrors.CopyErrors = append(syncErrors.CopyErrors, result.Err)
-		}
-	}
-
-	syncErrors.CacheErrors = cacheErrors
-
-	return syncErrors
 }

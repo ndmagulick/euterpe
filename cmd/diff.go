@@ -4,7 +4,6 @@ import (
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/fileio"
 	"fmt"
-	"log"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -14,14 +13,16 @@ var diffCommand = &cobra.Command{
 	Use:   "diff",
 	Short: "Prints the folder diff between the music library and the mp3 player",
 	Long:  "Prints the folder diff between the music library and the mp3 player. It will list which files will be copied to and delete from the mp3 player during the sync process.",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		diffInputs, err := directorydiff.PrepareDiffInputs(config.SourceFilePath, config.DestinationFilePath)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 		printDiff(diffResult.FilesToDelete, diffResult.FilesToCopy, diffResult.SyncSize)
+
+		return nil
 	},
 }
 

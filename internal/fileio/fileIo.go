@@ -92,7 +92,7 @@ func CopyFilesConcurrent(filesToCopy []FileData, source, destination string) []C
 	const workerCount = 2
 	jobs := make(chan FileData)
 	workerResults := make(chan CopyResult)
-	finalReults := make([]CopyResult, 0)
+	var finalResults []CopyResult
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(workerCount)
@@ -114,10 +114,10 @@ func CopyFilesConcurrent(filesToCopy []FileData, source, destination string) []C
 	}()
 
 	for result := range workerResults {
-		finalReults = append(finalReults, result)
+		finalResults = append(finalResults, result)
 	}
 
-	return finalReults
+	return finalResults
 }
 
 func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source string, destination string, wg *sync.WaitGroup) {
