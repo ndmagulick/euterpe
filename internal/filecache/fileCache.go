@@ -24,13 +24,8 @@ type CacheUpdate struct {
 	Operation RecordOperation
 }
 
-func CheckForStaleFiles(path string, files map[string]fileio.FileData) (map[string]CacheUpdate, error) {
+func CheckForStaleFiles(path string, files map[string]fileio.FileData, filesInCache map[string]database.FileHashRecord) (map[string]CacheUpdate, error) {
 	cacheUpdates := make(map[string]CacheUpdate)
-	filesInCache, err := database.GetAllFiles()
-	if err != nil {
-		return nil, err
-	}
-
 	for key, value := range files {
 		fileHashRecord, exists := filesInCache[key]
 
@@ -39,7 +34,7 @@ func CheckForStaleFiles(path string, files map[string]fileio.FileData) (map[stri
 		}
 
 		var sourceFileHash string
-		sourceFileHash, err = hashFile(filepath.Join(path, key))
+		sourceFileHash, err := hashFile(filepath.Join(path, key))
 		if err != nil {
 			return nil, err
 		}
@@ -111,6 +106,10 @@ func UpdateTouchedFiles(updates map[string]CacheUpdate) error {
 	}
 
 	return SaveUpdates(touchUpdates)
+}
+
+func LoadCachedRecords() (map[string]database.FileHashRecord, error) {
+	return database.GetAllFiles()
 }
 
 func hashFile(path string) (string, error) {

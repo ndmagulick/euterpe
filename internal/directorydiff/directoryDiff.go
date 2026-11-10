@@ -28,7 +28,12 @@ func PrepareDiffInputs(source, destination string) (DiffInputs, error) {
 		return DiffInputs{}, err
 	}
 
-	cacheUpdates, err := filecache.CheckForStaleFiles(source, sourceFiles)
+	cachedFiles, err := filecache.LoadCachedRecords()
+	if err != nil {
+		return DiffInputs{}, err
+	}
+
+	cacheUpdates, err := filecache.CheckForStaleFiles(source, sourceFiles, cachedFiles)
 	if err != nil {
 		return DiffInputs{}, err
 	}
@@ -62,10 +67,11 @@ func compareContents(sourceFiles map[string]fileio.FileData, destinationFiles ma
 	}
 
 	for key, value := range sourceFiles {
-		_, ok := destinationFiles[key]
+		destinationFile, onDevice := destinationFiles[key]
 		update, existsInCacheUpdates := cacheUpdates[key]
 		needsRecopy := existsInCacheUpdates && (update.Operation == filecache.InsertRecord || update.Operation == filecache.UpdateRecordHash)
-		if !ok || needsRecopy {
+		sizeMismatch := onDevice && destinationFile.Size != value.Size
+		if !onDevice || needsRecopy || sizeMismatch {
 			filesToCopy = append(filesToCopy, value)
 		}
 	}
