@@ -55,7 +55,11 @@ func CheckForStaleFiles(path string, files map[string]filedata.FileData) (map[st
 	return cacheUpdates, nil
 }
 
-func CreateBatch(updates []CacheUpdate) error {
+func SaveUpdates(updates []CacheUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
 	batch := make([]database.BatchRecord, 0, len(updates))
 	for _, update := range updates {
 		batch = append(batch, database.BatchRecord{
@@ -68,6 +72,21 @@ func CreateBatch(updates []CacheUpdate) error {
 	}
 
 	return database.ApplyBatch(batch)
+}
+
+func UpdateTouchedFiles(updates map[string]CacheUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	var touchUpdates []CacheUpdate
+	for _, update := range updates {
+		if update.Operation == UpdateRecordMetadata {
+			touchUpdates = append(touchUpdates, update)
+		}
+	}
+
+	return SaveUpdates(touchUpdates)
 }
 
 func PruneCache(sourceFiles map[string]filedata.FileData) error {

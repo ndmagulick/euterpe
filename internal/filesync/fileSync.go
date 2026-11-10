@@ -157,6 +157,11 @@ func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[strin
 		errors = append(errors, err)
 	}
 
+	err = filecache.UpdateTouchedFiles(cacheUpdates)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
 	return errors
 }
 
@@ -221,7 +226,7 @@ func flushBatch(batch []filecache.CacheUpdate) error {
 		return nil
 	}
 
-	err := filecache.CreateBatch(batch)
+	err := filecache.SaveUpdates(batch)
 	if err != nil {
 		return err
 	}
