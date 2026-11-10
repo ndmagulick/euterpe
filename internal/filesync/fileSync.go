@@ -62,6 +62,11 @@ func Sync(source, destination string) error {
 		}
 	}
 
+	err = filecache.UpdateTouchedFiles(diffInputs.CacheUpdates)
+	if err != nil {
+		return fmt.Errorf("error updating cache: %w", err)
+	}
+
 	err = filecache.PruneCache(diffInputs.SourceFiles)
 	if err != nil {
 		return fmt.Errorf("Error cleaning cache: %w", err)
@@ -127,12 +132,12 @@ func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[strin
 		close(results)
 	}()
 
-	var errors []error
+	var failures []error
 	batch := make([]filecache.CacheUpdate, 0, cacheBatchSize)
 
 	for result := range results {
 		if result.Err != nil {
-			errors = append(errors, result.Err)
+			failures = append(failures, result.Err)
 			continue
 		}
 
@@ -145,7 +150,7 @@ func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[strin
 		if len(batch) >= cacheBatchSize {
 			err := flushBatch(batch)
 			if err != nil {
-				errors = append(errors, err)
+				failures = append(failures, err)
 			}
 			batch = batch[:0]
 		}
@@ -154,15 +159,10 @@ func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[strin
 	// Flush remaining batch after jobs complete
 	err := flushBatch(batch)
 	if err != nil {
-		errors = append(errors, err)
+		failures = append(failures, err)
 	}
 
-	err = filecache.UpdateTouchedFiles(cacheUpdates)
-	if err != nil {
-		errors = append(errors, err)
-	}
-
-	return errors
+	return failures
 }
 
 func copyFileWorker(jobs <-chan filedata.FileData, results chan<- copyResult, source string, destination string, wg *sync.WaitGroup) {
@@ -183,12 +183,11 @@ func copyFileWorker(jobs <-chan filedata.FileData, results chan<- copyResult, so
 	}
 }
 
-func copyFile(source, destination string) error {
+func copyFile(source, destination string) (err error) {
 	bufferPointer := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(bufferPointer)
 
 	sourceFile, err := os.Open(source)
-
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
@@ -200,6 +199,17 @@ func copyFile(source, destination string) error {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
+	defer func() {
+		closeErr := destinationFile.Close()
+		if err == nil && closeErr != nil {
+			err = fmt.Errorf("copyFile %q: %w", destination, closeErr)
+		}
+
+		if err != nil {
+			_ = os.Remove(destination)
+		}
+	}()
+
 	_, err = io.CopyBuffer(writerOnly{destinationFile}, readerOnly{sourceFile}, *bufferPointer)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
@@ -209,12 +219,6 @@ func copyFile(source, destination string) error {
 	// Can possibly add a --fast flag to bypass but with warning
 	err = destinationFile.Sync()
 	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
-	}
-
-	err = destinationFile.Close()
-	if err != nil {
-		os.Remove(destination)
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
