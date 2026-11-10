@@ -12,7 +12,7 @@ var syncCommand = &cobra.Command{
 	Short: "Syncs your music library to your mp3 player",
 	Long:  "Syncs the music library specified in your settings.json file to the mp3 player path also specified in your settings.json file.",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := filesync.Sync(config.SourceFilePath, config.DestinationFilePath)
+		err, _ := filesync.Sync(config.SourceFilePath, config.DestinationFilePath)
 
 		if err != nil {
 			log.Fatal(err)

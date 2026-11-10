@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"euterpe/internal/directorydiff"
-	"euterpe/internal/filedata"
+	"euterpe/internal/fileio"
 	"fmt"
 	"log"
 
@@ -25,7 +25,7 @@ var diffCommand = &cobra.Command{
 	},
 }
 
-func printDiff(filesToDelete, filesToCopy []filedata.FileData, syncSize int64) {
+func printDiff(filesToDelete, filesToCopy []fileio.FileData, syncSize int64) {
 	minus := color.RedString("-")
 	plus := color.GreenString("+")
 

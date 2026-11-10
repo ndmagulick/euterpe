@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"euterpe/internal/database"
-	"euterpe/internal/filedata"
+	"euterpe/internal/fileio"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,12 +19,12 @@ const (
 )
 
 type CacheUpdate struct {
-	FileData  filedata.FileData
+	FileData  fileio.FileData
 	Hash      string
 	Operation RecordOperation
 }
 
-func CheckForStaleFiles(path string, files map[string]filedata.FileData) (map[string]CacheUpdate, error) {
+func CheckForStaleFiles(path string, files map[string]fileio.FileData) (map[string]CacheUpdate, error) {
 	cacheUpdates := make(map[string]CacheUpdate)
 
 	for key, value := range files {
@@ -74,22 +74,7 @@ func SaveUpdates(updates []CacheUpdate) error {
 	return database.ApplyBatch(batch)
 }
 
-func UpdateTouchedFiles(updates map[string]CacheUpdate) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	var touchUpdates []CacheUpdate
-	for _, update := range updates {
-		if update.Operation == UpdateRecordMetadata {
-			touchUpdates = append(touchUpdates, update)
-		}
-	}
-
-	return SaveUpdates(touchUpdates)
-}
-
-func PruneCache(sourceFiles map[string]filedata.FileData) error {
+func PruneCache(sourceFiles map[string]fileio.FileData) error {
 	filesInCache, err := database.GetAllFileNames()
 	if err != nil {
 		return err
@@ -110,6 +95,21 @@ func PruneCache(sourceFiles map[string]filedata.FileData) error {
 	}
 
 	return nil
+}
+
+func UpdateTouchedFiles(updates map[string]CacheUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	var touchUpdates []CacheUpdate
+	for _, update := range updates {
+		if update.Operation == UpdateRecordMetadata {
+			touchUpdates = append(touchUpdates, update)
+		}
+	}
+
+	return SaveUpdates(touchUpdates)
 }
 
 func hashFile(path string) (string, error) {

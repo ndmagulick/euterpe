@@ -3,76 +3,47 @@ package filesync
 import (
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
-	"euterpe/internal/filedata"
+	"euterpe/internal/fileio"
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"path/filepath"
-	"sync"
 
-	"github.com/fatih/color"
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
-type readerOnly struct{ io.Reader }
-type writerOnly struct{ io.Writer }
-
-const bufferSize = 1 << 21 // 2MB buffer
-
-var bufferPool = sync.Pool{
-	New: func() any {
-		buffer := make([]byte, bufferSize)
-		return &buffer
-	},
+type SyncErrors struct {
+	CopyErrors  []error
+	CacheErrors []error
 }
 
-type copyResult struct {
-	FileData filedata.FileData
-	Err      error
-}
-
-func Sync(source, destination string) error {
+// TODO fold errors, this is a desing smell
+func Sync(source, destination string) (error, SyncErrors) {
 	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
 	if err != nil {
-		return err
+		return err, SyncErrors{}
 	}
 
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {
-			return err
+			return err, SyncErrors{}
 		}
 	}
 
-	if len(diffResult.FilesToDelete) > 0 {
-		log.Printf("Deleting files from %s", destination)
-		err = deleteFiles(diffResult.FilesToDelete, destination)
-		if err != nil {
-			return err
-		}
+	copyResults, deleteErr := syncFiles(diffResult.FilesToDelete, diffResult.FilesToCopy, source, destination)
+	if deleteErr != nil {
+		return fmt.Errorf("Error deleting file: %w", deleteErr), SyncErrors{}
 	}
 
-	if len(diffResult.FilesToCopy) > 0 {
-		log.Printf("Copying files from %s to %s", source, destination)
-		errs := copyFilesConcurrent(diffResult.FilesToCopy, diffInputs.CacheUpdates, source, destination)
-		if len(errs) > 0 {
-			return fmt.Errorf("%d files failed to copy. See log for details", len(errs))
-		}
-	}
-
-	err = filecache.UpdateTouchedFiles(diffInputs.CacheUpdates)
-	if err != nil {
-		return fmt.Errorf("error updating cache: %w", err)
-	}
-
+	cacheErrors := syncCache(copyResults, diffInputs.CacheUpdates)
 	err = filecache.PruneCache(diffInputs.SourceFiles)
 	if err != nil {
-		return fmt.Errorf("Error cleaning cache: %w", err)
+		cacheErrors = append(cacheErrors, err)
 	}
 
-	return nil
+	syncErrors := collectErrors(copyResults, cacheErrors)
+
+	return nil, syncErrors
 }
 
 func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
@@ -88,152 +59,69 @@ func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) erro
 	return nil
 }
 
-func deleteFiles(filesToDelete []filedata.FileData, path string) error {
-	cross := color.RedString("✕")
-
-	for _, file := range filesToDelete {
-		fileToDeletePath := filepath.Join(path, file.Name)
-		err := os.Remove(fileToDeletePath)
-
+func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination string) ([]fileio.CopyResult, error) {
+	if len(filesToDelete) > 0 {
+		log.Printf("Deleting files from %s", destination)
+		err := fileio.DeleteFiles(filesToDelete, destination)
 		if err != nil {
-			return fmt.Errorf("deleteFiles: %w", err)
-		} else {
-			fmt.Printf("%s deleted %s\n", cross, file.Name)
+			return nil, err
 		}
 	}
 
-	return nil
+	var copyResults []fileio.CopyResult
+	if len(filesToCopy) > 0 {
+		log.Printf("Copying files from %s to %s", source, destination)
+		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination)
+	}
+
+	return copyResults, nil
 }
 
-func copyFilesConcurrent(filesToCopy []filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate, source, destination string) []error {
-	// We don't want to overload the bus with too many workers. Anything above 5 may cause problems or even slow down the sync
-	// NOTE: The bottleneck may reside in the MP3 player depending on its file system and/or how it writes data internally
-	const workerCount = 2
+func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecache.CacheUpdate) []error {
+	var cacheErrors []error
 	const cacheBatchSize = 100
-	jobs := make(chan filedata.FileData)
-	results := make(chan copyResult)
-	var waitGroup sync.WaitGroup
-
-	waitGroup.Add(workerCount)
-	for range workerCount {
-		go copyFileWorker(jobs, results, source, destination, &waitGroup)
-	}
-
-	go func() {
-		for _, file := range filesToCopy {
-			jobs <- file
-		}
-
-		close(jobs)
-	}()
-
-	go func() {
-		waitGroup.Wait()
-		close(results)
-	}()
-
-	var failures []error
 	batch := make([]filecache.CacheUpdate, 0, cacheBatchSize)
 
-	for result := range results {
-		if result.Err != nil {
-			failures = append(failures, result.Err)
-			continue
-		}
+	err := filecache.UpdateTouchedFiles(cacheUpdates)
+	if err != nil {
+		cacheErrors = append(cacheErrors, err)
+	}
 
+	for _, result := range copyResults {
 		update, ok := cacheUpdates[result.FileData.Name]
-		if !ok {
+		if !ok || result.Err != nil {
 			continue
 		}
 
 		batch = append(batch, update)
 		if len(batch) >= cacheBatchSize {
-			err := flushBatch(batch)
+			err := filecache.SaveUpdates(batch)
 			if err != nil {
-				failures = append(failures, err)
+				cacheErrors = append(cacheErrors, err)
 			}
 			batch = batch[:0]
 		}
 	}
 
-	// Flush remaining batch after jobs complete
-	err := flushBatch(batch)
+	// Flush remaining batch
+	err = filecache.SaveUpdates(batch)
 	if err != nil {
-		failures = append(failures, err)
+		cacheErrors = append(cacheErrors, err)
 	}
 
-	return failures
+	return cacheErrors
 }
 
-func copyFileWorker(jobs <-chan filedata.FileData, results chan<- copyResult, source string, destination string, wg *sync.WaitGroup) {
-	defer wg.Done()
-	check := color.GreenString("✓")
+func collectErrors(copyResults []fileio.CopyResult, cacheErrors []error) SyncErrors {
+	var syncErrors SyncErrors
 
-	for file := range jobs {
-		sourceFilePath := filepath.Join(source, file.Name)
-		destinationFilePath := filepath.Join(destination, file.Name)
-		err := copyFile(sourceFilePath, destinationFilePath)
-		if err != nil {
-			log.Printf("Failed to copy %s: %v", file.Name, err)
-		} else {
-			fmt.Printf("%s copied %s\n", check, file.Name)
+	for _, result := range copyResults {
+		if result.Err != nil {
+			syncErrors.CopyErrors = append(syncErrors.CopyErrors, result.Err)
 		}
-
-		results <- copyResult{FileData: file, Err: err}
-	}
-}
-
-func copyFile(source, destination string) (err error) {
-	bufferPointer := bufferPool.Get().(*[]byte)
-	defer bufferPool.Put(bufferPointer)
-
-	sourceFile, err := os.Open(source)
-	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
 	}
 
-	defer sourceFile.Close()
+	syncErrors.CacheErrors = cacheErrors
 
-	destinationFile, err := os.Create(destination)
-	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
-	}
-
-	defer func() {
-		closeErr := destinationFile.Close()
-		if err == nil && closeErr != nil {
-			err = fmt.Errorf("copyFile %q: %w", destination, closeErr)
-		}
-
-		if err != nil {
-			_ = os.Remove(destination)
-		}
-	}()
-
-	_, err = io.CopyBuffer(writerOnly{destinationFile}, readerOnly{sourceFile}, *bufferPointer)
-	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
-	}
-
-	// Calls to Sync() cause a slowdown while copying, but ensures data is intact in the event of a power failure or device is removed suddenly
-	// Can possibly add a --fast flag to bypass but with warning
-	err = destinationFile.Sync()
-	if err != nil {
-		return fmt.Errorf("copyFile: %w", err)
-	}
-
-	return nil
-}
-
-func flushBatch(batch []filecache.CacheUpdate) error {
-	if len(batch) == 0 {
-		return nil
-	}
-
-	err := filecache.SaveUpdates(batch)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return syncErrors
 }

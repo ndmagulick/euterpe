@@ -2,28 +2,28 @@ package directorydiff
 
 import (
 	"euterpe/internal/filecache"
-	"euterpe/internal/filedata"
+	"euterpe/internal/fileio"
 )
 
 type DiffResult struct {
-	FilesToDelete []filedata.FileData
-	FilesToCopy   []filedata.FileData
+	FilesToDelete []fileio.FileData
+	FilesToCopy   []fileio.FileData
 	SyncSize      int64
 }
 
 type DiffInputs struct {
-	SourceFiles      map[string]filedata.FileData
-	DestinationFiles map[string]filedata.FileData
+	SourceFiles      map[string]fileio.FileData
+	DestinationFiles map[string]fileio.FileData
 	CacheUpdates     map[string]filecache.CacheUpdate
 }
 
 func PrepareDiffInputs(source, destination string) (DiffInputs, error) {
-	sourceFiles, err := filedata.ReadDirectory(source)
+	sourceFiles, err := fileio.ReadDirectory(source)
 	if err != nil {
 		return DiffInputs{}, err
 	}
 
-	destinationFiles, err := filedata.ReadDirectory(destination)
+	destinationFiles, err := fileio.ReadDirectory(destination)
 	if err != nil {
 		return DiffInputs{}, err
 	}
@@ -40,7 +40,7 @@ func PrepareDiffInputs(source, destination string) (DiffInputs, error) {
 	}, nil
 }
 
-func Diff(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
+func Diff(sourceFiles, destinationFiles map[string]fileio.FileData, cacheUpdates map[string]filecache.CacheUpdate) DiffResult {
 	filesToDelete, filesToCopy := compareContents(sourceFiles, destinationFiles, cacheUpdates)
 	syncSize := calculateSpaceChange(filesToCopy, filesToDelete, destinationFiles)
 
@@ -50,9 +50,9 @@ func Diff(sourceFiles, destinationFiles map[string]filedata.FileData, cacheUpdat
 		SyncSize:      syncSize}
 }
 
-func compareContents(sourceFiles map[string]filedata.FileData, destinationFiles map[string]filedata.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []filedata.FileData) {
-	filesToDelete = []filedata.FileData{}
-	filesToCopy = []filedata.FileData{}
+func compareContents(sourceFiles map[string]fileio.FileData, destinationFiles map[string]fileio.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []fileio.FileData) {
+	filesToDelete = []fileio.FileData{}
+	filesToCopy = []fileio.FileData{}
 
 	for key, value := range destinationFiles {
 		_, ok := sourceFiles[key]
@@ -73,7 +73,7 @@ func compareContents(sourceFiles map[string]filedata.FileData, destinationFiles 
 	return filesToDelete, filesToCopy
 }
 
-func calculateSpaceChange(filesToCopy, filesToDelete []filedata.FileData, destinationFiles map[string]filedata.FileData) int64 {
+func calculateSpaceChange(filesToCopy, filesToDelete []fileio.FileData, destinationFiles map[string]fileio.FileData) int64 {
 	var filesToCopyTotalSize int64
 	var filesToDeleteTotalSize int64
 
