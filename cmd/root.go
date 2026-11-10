@@ -35,8 +35,8 @@ var rootCommand = &cobra.Command{
 	},
 }
 
-func Execute() {
-	cobra.CheckErr(rootCommand.Execute())
+func Execute() error {
+	return rootCommand.Execute()
 }
 
 func init() {

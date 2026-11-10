@@ -10,7 +10,7 @@ import (
 var versionCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println(`
  _______          _________ _______  _______  _______  _______ 
 (  ____ \|\     /|\__   __/(  ____ \(  ____ )(  ____ )(  ____ \
@@ -24,5 +24,7 @@ var versionCommand = &cobra.Command{
 		`)
 		color.Green("Euterpe v0.1")
 		color.Green("Coded by a human in Berlin")
+
+		return nil
 	},
 }

@@ -3,9 +3,14 @@ package main
 import (
 	"euterpe/cmd"
 	"euterpe/internal/database"
+	"os"
 )
 
 func main() {
-	cmd.Execute()
+	err := cmd.Execute()
 	database.CloseDatabase()
+
+	if err != nil {
+		os.Exit(1)
+	}
 }
