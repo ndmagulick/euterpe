@@ -37,31 +37,15 @@ func OpenDatabase() error {
 		return err
 	}
 
-	var count int
-	err = db.QueryRow(`SELECT COUNT(*) as count
-							FROM sqlite_master 
-							WHERE type = 'table'
-							AND name = 'fileHashes'`).Scan(&count)
-
-	if err != nil {
-		return err
-	}
-
-	if count > 0 {
-		fmt.Printf("Cache exists\n")
-	} else {
-		fmt.Printf("Generating cache...\n")
-
-		_, err = db.Exec(`CREATE TABLE fileHashes (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS fileHashes (
 							fileName TEXT PRIMARY KEY,
 							size 	 INTEGER NOT NULL,
 							lastModifiedTime INTEGER NOT NULL,
 							fileHash TEXT NOT NULL
 						)`)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -122,7 +106,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		if batchRecord.IsInsert {
 			_, err = insertStatement.Exec(batchRecord.Name, batchRecord.Size, batchRecord.ModifiedTime, batchRecord.FileHash)
 			if err != nil {
-				return fmt.Errorf("Cache insert failed for file %q: %w", batchRecord.Name, err)
+				return fmt.Errorf("cache insert failed for file %q: %w", batchRecord.Name, err)
 			}
 			continue
 		}
@@ -130,7 +114,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		var result sql.Result
 		result, err = updateStatement.Exec(batchRecord.FileHash, batchRecord.ModifiedTime, batchRecord.Size, batchRecord.Name)
 		if err != nil {
-			return fmt.Errorf("Cache update failed for file %q: %w", batchRecord.Name, err)
+			return fmt.Errorf("cache update failed for file %q: %w", batchRecord.Name, err)
 		}
 
 		var rowsAffected int64
@@ -140,7 +124,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		}
 
 		if rowsAffected == 0 {
-			return fmt.Errorf("Cache update failed for file %q. No matching rows", batchRecord.Name)
+			return fmt.Errorf("cache update failed for file %q. No matching rows", batchRecord.Name)
 		}
 	}
 
@@ -196,7 +180,7 @@ func DeleteRecords(orphanedFiles []string) error {
 	for _, orphanedFile := range orphanedFiles {
 		_, err = deleteStatement.Exec(orphanedFile)
 		if err != nil {
-			return fmt.Errorf("Cache pruning failed for file %q: %w", orphanedFile, err)
+			return fmt.Errorf("cache pruning failed for file %q: %w", orphanedFile, err)
 		}
 	}
 

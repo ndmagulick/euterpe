@@ -78,9 +78,9 @@ func DeleteFiles(filesToDelete []FileData, path string) error {
 
 		if err != nil {
 			return fmt.Errorf("deleteFiles: %w", err)
-		} else {
-			fmt.Printf("%s deleted %s\n", cross, file.Name)
 		}
+
+		fmt.Printf("%s deleted %s\n", cross, file.Name)
 	}
 
 	return nil

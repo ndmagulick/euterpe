@@ -32,7 +32,7 @@ func Sync(source, destination string) (SyncReport, error) {
 
 	copyResults, deleteErr := syncFiles(diffResult.FilesToDelete, diffResult.FilesToCopy, source, destination)
 	if deleteErr != nil {
-		return SyncReport{}, fmt.Errorf("Error deleting files: %w", deleteErr)
+		return SyncReport{}, fmt.Errorf("error deleting files: %w", deleteErr)
 	}
 
 	var syncReport SyncReport
