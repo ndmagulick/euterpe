@@ -22,6 +22,10 @@ func Sync(source, destination string) (SyncReport, error) {
 		return SyncReport{}, fmt.Errorf("error preparing diff: %w", err)
 	}
 
+	if len(diffInputs.SourceFiles) == 0 {
+		return SyncReport{}, fmt.Errorf("no supported audio files exist in music library. Sync aborted")
+	}
+
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
 		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
