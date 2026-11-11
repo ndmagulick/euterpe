@@ -3,6 +3,7 @@
 ![Euterpe](https://upload.wikimedia.org/wikipedia/commons/6/65/Musa3-euterpe-vs.jpg)
 
 This is a personal project meant to make syncing my music library to my mp3 player easier/faster and to learn Go.
+Still a work in progress :)
 
 ### THIS REPOSITORY CONTAINS NO AI GENERATED CODE
 
@@ -21,10 +22,9 @@ Claude was only used for review and to be a rubber ducky.
 - Fix the tests
 - Make a proper README
 - Print space
-- Add command to back up prior to sync
 - Add command to restore
-- Edit config
-- Verify config
+- Edit config via command line
+- Verify config via command line
 
 #### Much Later (incomplete)
 
