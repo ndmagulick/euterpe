@@ -43,4 +43,5 @@ func init() {
 	rootCommand.AddCommand(syncCommand)
 	rootCommand.AddCommand(diffCommand)
 	rootCommand.AddCommand(versionCommand)
+	rootCommand.AddCommand(backupCommand)
 }
