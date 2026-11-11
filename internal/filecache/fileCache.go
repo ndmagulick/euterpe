@@ -28,7 +28,6 @@ func CheckForStaleFiles(path string, files map[string]fileio.FileData, filesInCa
 	cacheUpdates := make(map[string]CacheUpdate)
 	for key, value := range files {
 		fileHashRecord, exists := filesInCache[key]
-
 		if exists && value.LastModifiedTime.UnixNano() == fileHashRecord.LastModifiedTime && value.Size == fileHashRecord.FileSize {
 			continue
 		}
@@ -77,7 +76,6 @@ func PruneCache(sourceFiles map[string]fileio.FileData) error {
 	}
 
 	orphanedFiles := make([]string, 0)
-
 	for _, file := range filesInCache {
 		_, ok := sourceFiles[file]
 		if !ok {

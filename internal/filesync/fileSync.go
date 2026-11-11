@@ -37,7 +37,6 @@ func Sync(source, destination string) (SyncReport, error) {
 	var syncReport SyncReport
 	syncReport.CopyErrors = collectCopyErrors(copyResults)
 	syncReport.CacheErrors = syncCache(copyResults, plan.Inputs.CacheUpdates, plan.Inputs.SourceFiles)
-
 	if len(syncReport.CopyErrors) > 0 {
 		return syncReport, fmt.Errorf("%d of %d files failed to copy: %w", len(syncReport.CopyErrors), len(plan.Diff.FilesToCopy), errors.Join(syncReport.CopyErrors...))
 	}

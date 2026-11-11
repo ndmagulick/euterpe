@@ -57,7 +57,6 @@ func ReadDirectory(path string) (map[string]FileData, error) {
 	}
 
 	files := make(map[string]FileData)
-
 	for _, file := range directoryEntries {
 		if file.IsDir() {
 			continue
@@ -136,7 +135,6 @@ func CopyFilesConcurrent(filesToCopy []FileData, source, destination string, onP
 
 func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source string, destination string, onProgress ProgressFunc, wg *sync.WaitGroup) {
 	defer wg.Done()
-
 	for file := range jobs {
 		sourceFilePath := filepath.Join(source, file.Name)
 		destinationFilePath := filepath.Join(destination, file.Name)
@@ -152,14 +150,12 @@ func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source stri
 func copyFile(source, destination string, onProgress ProgressFunc) (err error) {
 	bufferPointer := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(bufferPointer)
-
 	sourceFile, err := os.Open(source)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
 	}
 
 	defer sourceFile.Close()
-
 	destinationFile, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("copyFile: %w", err)
