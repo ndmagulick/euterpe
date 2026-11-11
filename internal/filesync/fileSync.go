@@ -130,13 +130,13 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 
 	for _, result := range copyResults {
 		update, ok := cacheUpdates[result.FileData.Name]
-		if !ok || result.Err != nil {
+		if !ok || result.Err != nil || update.Operation == filecache.UpdateRecordMetadata {
 			continue
 		}
 
 		batch = append(batch, update)
 		if len(batch) >= cacheBatchSize {
-			err := filecache.SaveUpdates(batch)
+			err = filecache.SaveUpdates(batch)
 			if err != nil {
 				cacheErrors = append(cacheErrors, err)
 			}
