@@ -14,49 +14,33 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
+type syncPlan struct {
+	Inputs directorydiff.DiffInputs
+	Diff   directorydiff.DiffResult
+}
+
 type SyncReport struct {
 	CopyErrors  []error
 	CacheErrors []error
 }
 
 func Sync(source, destination string) (SyncReport, error) {
-	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
+	plan, err := planSync(source, destination)
 	if err != nil {
-		return SyncReport{}, fmt.Errorf("error preparing diff: %w", err)
+		return SyncReport{}, err
 	}
 
-	if len(diffInputs.SourceFiles) == 0 {
-		return SyncReport{}, fmt.Errorf("no supported audio files exist in music library. Sync aborted")
-	}
-
-	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
-	if diffResult.SyncSize > 0 {
-		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
-		if err != nil {
-			return SyncReport{}, err
-		}
-	}
-
-	copyResults, deleteErr := syncFiles(diffResult.FilesToDelete, diffResult.FilesToCopy, source, destination)
-	if deleteErr != nil {
-		return SyncReport{}, fmt.Errorf("error deleting files: %w", deleteErr)
+	copyResults, err := syncFiles(plan.Diff.FilesToDelete, plan.Diff.FilesToCopy, source, destination)
+	if err != nil {
+		return SyncReport{}, fmt.Errorf("deleting files: %w", err)
 	}
 
 	var syncReport SyncReport
-	for _, result := range copyResults {
-		if result.Err != nil {
-			syncReport.CopyErrors = append(syncReport.CopyErrors, result.Err)
-		}
-	}
-
-	syncReport.CacheErrors = syncCache(copyResults, diffInputs.CacheUpdates)
-	err = filecache.PruneCache(diffInputs.SourceFiles)
-	if err != nil {
-		syncReport.CacheErrors = append(syncReport.CacheErrors, fmt.Errorf("error pruning cache: %w", err))
-	}
+	syncReport.CopyErrors = collectCopyErrors(copyResults)
+	syncReport.CacheErrors = syncCache(copyResults, plan.Inputs.CacheUpdates, plan.Inputs.SourceFiles)
 
 	if len(syncReport.CopyErrors) > 0 {
-		return syncReport, fmt.Errorf("%d of %d failed to copy: %w", len(syncReport.CopyErrors), len(diffResult.FilesToCopy), errors.Join(syncReport.CopyErrors...))
+		return syncReport, fmt.Errorf("%d of %d files failed to copy: %w", len(syncReport.CopyErrors), len(plan.Diff.FilesToCopy), errors.Join(syncReport.CopyErrors...))
 	}
 
 	return syncReport, nil
@@ -88,18 +72,18 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 	if len(filesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
 		copySize := calculateCopySize(filesToCopy)
-		bar := createProgressBar(copySize)
+		progressBar := createProgressBar(copySize)
 		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, func(bytesCopied int64) {
-			_ = bar.Add64(bytesCopied)
+			_ = progressBar.Add64(bytesCopied)
 		})
 
-		_ = bar.Finish()
+		_ = progressBar.Finish()
 	}
 
 	return copyResults, nil
 }
 
-func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecache.CacheUpdate) []error {
+func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecache.CacheUpdate, sourceFiles map[string]fileio.FileData) []error {
 	var cacheErrors []error
 	const cacheBatchSize = 100
 	batch := make([]filecache.CacheUpdate, 0, cacheBatchSize)
@@ -131,7 +115,44 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 		cacheErrors = append(cacheErrors, err)
 	}
 
+	err = filecache.PruneCache(sourceFiles)
+	if err != nil {
+		cacheErrors = append(cacheErrors, fmt.Errorf("error pruning cache: %w", err))
+	}
+
 	return cacheErrors
+}
+
+func collectCopyErrors(copyResults []fileio.CopyResult) []error {
+	var copyErrors []error
+	for _, result := range copyResults {
+		if result.Err != nil {
+			copyErrors = append(copyErrors, result.Err)
+		}
+	}
+
+	return copyErrors
+}
+
+func planSync(source, destination string) (syncPlan, error) {
+	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
+	if err != nil {
+		return syncPlan{}, fmt.Errorf("preparing diff: %w", err)
+	}
+
+	if len(diffInputs.SourceFiles) == 0 {
+		return syncPlan{}, fmt.Errorf("no supported audio files exist in music library, sync aborted")
+	}
+
+	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
+	if diffResult.SyncSize > 0 {
+		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
+		if err != nil {
+			return syncPlan{}, err
+		}
+	}
+
+	return syncPlan{Inputs: diffInputs, Diff: diffResult}, nil
 }
 
 // Progress bar setup functions
