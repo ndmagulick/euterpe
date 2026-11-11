@@ -30,6 +30,8 @@ func Sync(source, destination string) (SyncReport, error) {
 		return SyncReport{}, err
 	}
 
+	// If there is an error deleting a file, we fail the entire sync since it could cause the rest of the sync to fail due to space constraints on the device
+	// Errors copying are collected since a failed copy should not affect other files or space
 	copyResults, err := syncFiles(plan.Diff.FilesToDelete, plan.Diff.FilesToCopy, source, destination)
 	if err != nil {
 		return SyncReport{}, fmt.Errorf("deleting files: %w", err)
@@ -140,8 +142,9 @@ func planSync(source, destination string) (syncPlan, error) {
 		return syncPlan{}, fmt.Errorf("preparing diff: %w", err)
 	}
 
+	// If no supported files exist, we error since it would wipe the device and cache
 	if len(diffInputs.SourceFiles) == 0 {
-		return syncPlan{}, fmt.Errorf("no supported audio files exist in music library, sync aborted")
+		return syncPlan{}, fmt.Errorf("no supported audio files exist in the music library, sync aborted")
 	}
 
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
