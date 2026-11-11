@@ -1,15 +1,9 @@
 package filesync
 
-import (
-	"euterpe/internal/fileio"
-	"os"
-	"path/filepath"
-)
-
-type dummyFile struct {
-	name    string
-	content string
-}
+// type dummyFile struct {
+// 	name    string
+// 	content string
+// }
 
 // func TestReadDirectory(t *testing.T) {
 // 	// Arrange
@@ -167,23 +161,23 @@ type dummyFile struct {
 // 	assert.Equal(t, []byte("data"), actualContent)
 // }
 
-func generateFiles(filePath string, fileList []dummyFile) error {
-	for _, file := range fileList {
-		err := os.WriteFile(filepath.Join(filePath, file.name), []byte(file.content), 0644)
-		if err != nil {
-			return err
-		}
-	}
+// func generateFiles(filePath string, fileList []dummyFile) error {
+// 	for _, file := range fileList {
+// 		err := os.WriteFile(filepath.Join(filePath, file.name), []byte(file.content), 0644)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func fileDataListContainsFileName(name string, fileDataList []fileio.FileData) bool {
-	for _, value := range fileDataList {
-		if value.Name == name {
-			return true
-		}
-	}
+// func fileDataListContainsFileName(name string, fileDataList []fileio.FileData) bool {
+// 	for _, value := range fileDataList {
+// 		if value.Name == name {
+// 			return true
+// 		}
+// 	}
 
-	return false
-}
+// 	return false
+// }

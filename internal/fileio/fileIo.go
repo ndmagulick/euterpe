@@ -186,3 +186,23 @@ func copyFile(source, destination string, onProgress ProgressFunc) (err error) {
 
 	return nil
 }
+
+func CollectCopyErrors(copyResults []CopyResult) []error {
+	var copyErrors []error
+	for _, result := range copyResults {
+		if result.Err != nil {
+			copyErrors = append(copyErrors, result.Err)
+		}
+	}
+
+	return copyErrors
+}
+
+func CalculateCopySize(filesToCopy []FileData) int64 {
+	var total int64
+	for _, fileToCopy := range filesToCopy {
+		total += fileToCopy.Size
+	}
+
+	return total
+}

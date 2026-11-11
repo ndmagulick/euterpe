@@ -5,6 +5,7 @@ import (
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
+	"euterpe/internal/progress"
 	"fmt"
 	"log"
 
@@ -35,7 +36,7 @@ func Sync(source, destination string) (SyncReport, error) {
 	}
 
 	var syncReport SyncReport
-	syncReport.CopyErrors = collectCopyErrors(copyResults)
+	syncReport.CopyErrors = fileio.CollectCopyErrors(copyResults)
 	syncReport.CacheErrors = syncCache(copyResults, plan.Inputs.CacheUpdates, plan.Inputs.SourceFiles)
 	if len(syncReport.CopyErrors) > 0 {
 		return syncReport, fmt.Errorf("%d of %d files failed to copy: %w", len(syncReport.CopyErrors), len(plan.Diff.FilesToCopy), errors.Join(syncReport.CopyErrors...))
@@ -91,26 +92,12 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 	var copyResults []fileio.CopyResult
 	if len(filesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		progressBar := createProgressBar(filesToCopy)
-		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, func(bytesCopied int64) {
-			_ = progressBar.Add64(bytesCopied)
-		})
-
-		_ = progressBar.Finish()
+		onProgress, finish := progress.NewProgressBar("copying", fileio.CalculateCopySize(filesToCopy))
+		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, onProgress)
+		finish()
 	}
 
 	return copyResults, nil
-}
-
-func collectCopyErrors(copyResults []fileio.CopyResult) []error {
-	var copyErrors []error
-	for _, result := range copyResults {
-		if result.Err != nil {
-			copyErrors = append(copyErrors, result.Err)
-		}
-	}
-
-	return copyErrors
 }
 
 func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecache.CacheUpdate, sourceFiles map[string]fileio.FileData) []error {
