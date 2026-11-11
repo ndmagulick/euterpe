@@ -6,6 +6,8 @@ This is a personal project meant to make syncing my music library to my mp3 play
 
 ### THIS REPOSITORY CONTAINS NO AI GENERATED CODE
 
+Claude was only used for review and to be a rubber ducky.
+
 ## To Run
 
 - You need to have Go on your machine
@@ -21,7 +23,6 @@ This is a personal project meant to make syncing my music library to my mp3 play
 - Print space
 - Add command to back up prior to sync
 - Add command to restore
-- Status bar
 - Edit config
 - Verify config
 
