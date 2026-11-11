@@ -48,6 +48,28 @@ func Sync(source, destination string) (SyncReport, error) {
 	return syncReport, nil
 }
 
+func planSync(source, destination string) (syncPlan, error) {
+	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
+	if err != nil {
+		return syncPlan{}, fmt.Errorf("preparing diff: %w", err)
+	}
+
+	// If no supported files exist, we error since it would wipe the device and cache
+	if len(diffInputs.SourceFiles) == 0 {
+		return syncPlan{}, fmt.Errorf("no supported audio files exist in the music library, sync aborted")
+	}
+
+	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
+	if diffResult.SyncSize > 0 {
+		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
+		if err != nil {
+			return syncPlan{}, err
+		}
+	}
+
+	return syncPlan{Inputs: diffInputs, Diff: diffResult}, nil
+}
+
 func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
 	usage, err := disk.Usage(destinationPath)
 	if err != nil {
@@ -83,6 +105,17 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 	}
 
 	return copyResults, nil
+}
+
+func collectCopyErrors(copyResults []fileio.CopyResult) []error {
+	var copyErrors []error
+	for _, result := range copyResults {
+		if result.Err != nil {
+			copyErrors = append(copyErrors, result.Err)
+		}
+	}
+
+	return copyErrors
 }
 
 func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecache.CacheUpdate, sourceFiles map[string]fileio.FileData) []error {
@@ -123,39 +156,6 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 	}
 
 	return cacheErrors
-}
-
-func collectCopyErrors(copyResults []fileio.CopyResult) []error {
-	var copyErrors []error
-	for _, result := range copyResults {
-		if result.Err != nil {
-			copyErrors = append(copyErrors, result.Err)
-		}
-	}
-
-	return copyErrors
-}
-
-func planSync(source, destination string) (syncPlan, error) {
-	diffInputs, err := directorydiff.PrepareDiffInputs(source, destination)
-	if err != nil {
-		return syncPlan{}, fmt.Errorf("preparing diff: %w", err)
-	}
-
-	// If no supported files exist, we error since it would wipe the device and cache
-	if len(diffInputs.SourceFiles) == 0 {
-		return syncPlan{}, fmt.Errorf("no supported audio files exist in the music library, sync aborted")
-	}
-
-	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
-	if diffResult.SyncSize > 0 {
-		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
-		if err != nil {
-			return syncPlan{}, err
-		}
-	}
-
-	return syncPlan{Inputs: diffInputs, Diff: diffResult}, nil
 }
 
 // Progress bar setup functions
