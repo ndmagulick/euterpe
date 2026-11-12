@@ -10,7 +10,7 @@ import (
 type Settings struct {
 	SourceFilePath      string `json:"source"`
 	DestinationFilePath string `json:"destination"`
-	BackupRootPath      string `json:"backupRootPath"`
+	BackupRoot          string `json:"backupRoot"`
 }
 
 func ReadSettings() (settings Settings, err error) {

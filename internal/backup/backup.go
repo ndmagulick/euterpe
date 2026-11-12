@@ -29,7 +29,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("Backing up device files to %s...\n", backupDirectoryPath)
+	fmt.Printf("Backing up device files to %s\n", backupDirectoryPath)
 
 	deviceFiles := slices.Collect(maps.Values(deviceFileMap))
 	onProgress, finish := progress.NewProgressBar("backing up", fileio.CalculateCopySize(deviceFiles))
