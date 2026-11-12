@@ -4,6 +4,10 @@
 
 This is a personal project meant to make syncing my music library to my mp3 player easier/faster and to learn Go.
 Still a work in progress :)
+<br/>
+
+- Developed on Windows
+- Local mp3 player: Sony Walkman NW-A45 with 64gb expandable storage
 
 ### THIS REPOSITORY CONTAINS NO AI GENERATED CODE
 
