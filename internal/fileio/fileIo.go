@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type ProgressFunc func(bytesCopied int64)
@@ -198,11 +199,25 @@ func CollectCopyErrors(copyResults []CopyResult) []error {
 	return copyErrors
 }
 
-func CalculateCopySize(filesToCopy []FileData) int64 {
+func CalculateFileListSize(fileList []FileData) int64 {
 	var total int64
-	for _, fileToCopy := range filesToCopy {
+	for _, fileToCopy := range fileList {
 		total += fileToCopy.Size
 	}
 
 	return total
+}
+
+// TODO rename sizeOfSync
+func CheckIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
+	usage, err := disk.Usage(destinationPath)
+	if err != nil {
+		return fmt.Errorf("checkIfSufficientSpaceExists: %w", err)
+	}
+
+	if sizeOfSync > int64(usage.Free) {
+		return fmt.Errorf("insufficient space at %s: need %d bytes, but only %d bytes available", destinationPath, sizeOfSync, usage.Free)
+	}
+
+	return nil
 }

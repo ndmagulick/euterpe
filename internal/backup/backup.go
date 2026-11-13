@@ -3,7 +3,7 @@ package backup
 import (
 	"errors"
 	"euterpe/internal/fileio"
-	"euterpe/internal/progress"
+	"euterpe/internal/ui"
 	"fmt"
 	"maps"
 	"os"
@@ -32,7 +32,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 	fmt.Printf("Backing up device files to %s\n", backupDirectoryPath)
 
 	deviceFiles := slices.Collect(maps.Values(deviceFileMap))
-	onProgress, finish := progress.NewProgressBar("backing up", fileio.CalculateCopySize(deviceFiles))
+	onProgress, finish := ui.NewProgressBar("backing up", fileio.CalculateFileListSize(deviceFiles))
 	copyResults := fileio.CopyFilesConcurrent(deviceFiles, devicePath, backupDirectoryPath, onProgress)
 	finish()
 

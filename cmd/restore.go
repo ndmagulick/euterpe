@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"euterpe/internal/selectmenu"
+	"euterpe/internal/ui"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,13 +9,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// idea: either take in argument or scroll through available backups
-// probably use external package for cycling trhough options
-//
-// wipe the data from the device and restore the data. this is meant to restore to a pervious state
-
 const backupMenuTitle = "Available backups"
 
+// TODO add option for argument
 var restoreCommand = &cobra.Command{
 	Use:   "restore",
 	Short: "Restores your device's music library to a previous state from a backup folder",
@@ -27,12 +23,12 @@ var restoreCommand = &cobra.Command{
 			return err
 		}
 
-		options, err := selectmenu.ConstructOptions(directories)
+		options, err := ui.ConstructSelectMenuOptions(directories)
 		if err != nil {
 			return err
 		}
 
-		backupMenu := selectmenu.NewSelectMenu(backupMenuTitle, options, &backupSelection)
+		backupMenu := ui.NewSelectMenu(backupMenuTitle, options, &backupSelection)
 		backupMenu.Run()
 
 		fmt.Printf("%s", backupSelection)

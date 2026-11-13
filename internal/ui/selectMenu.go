@@ -1,4 +1,4 @@
-package selectmenu
+package ui
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func NewSelectMenu(title string, options []huh.Option[string], selection *string
 				).Value(selection))).WithTheme(huh.ThemeBase())
 }
 
-func ConstructOptions(input map[string]string) ([]huh.Option[string], error) {
+func ConstructSelectMenuOptions(input map[string]string) ([]huh.Option[string], error) {
 	if len(input) == 0 {
 		return nil, fmt.Errorf("constructing options, no entries exist")
 	}

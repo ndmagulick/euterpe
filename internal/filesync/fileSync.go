@@ -5,11 +5,9 @@ import (
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
-	"euterpe/internal/progress"
+	"euterpe/internal/ui"
 	"fmt"
 	"log"
-
-	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type syncPlan struct {
@@ -58,26 +56,13 @@ func planSync(source, destination string) (syncPlan, error) {
 
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)
 	if diffResult.SyncSize > 0 {
-		err = checkIfSufficientSpaceExists(destination, diffResult.SyncSize)
+		err = fileio.CheckIfSufficientSpaceExists(destination, diffResult.SyncSize)
 		if err != nil {
 			return syncPlan{}, err
 		}
 	}
 
 	return syncPlan{Inputs: diffInputs, Diff: diffResult}, nil
-}
-
-func checkIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
-	usage, err := disk.Usage(destinationPath)
-	if err != nil {
-		return fmt.Errorf("checkIfSufficientSpaceExists: %w", err)
-	}
-
-	if sizeOfSync > int64(usage.Free) {
-		return fmt.Errorf("insufficient space. need %d bytes, but only %d bytes available", sizeOfSync, usage.Free)
-	}
-
-	return nil
 }
 
 func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination string) ([]fileio.CopyResult, error) {
@@ -92,7 +77,7 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 	var copyResults []fileio.CopyResult
 	if len(filesToCopy) > 0 {
 		log.Printf("Copying files from %s to %s", source, destination)
-		onProgress, finish := progress.NewProgressBar("copying", fileio.CalculateCopySize(filesToCopy))
+		onProgress, finish := ui.NewProgressBar("copying", fileio.CalculateFileListSize(filesToCopy))
 		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, onProgress)
 		finish()
 	}
