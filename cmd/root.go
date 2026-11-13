@@ -44,4 +44,5 @@ func init() {
 	rootCommand.AddCommand(diffCommand)
 	rootCommand.AddCommand(versionCommand)
 	rootCommand.AddCommand(backupCommand)
+	rootCommand.AddCommand(restoreCommand)
 }

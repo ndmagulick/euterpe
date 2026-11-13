@@ -12,6 +12,7 @@ import (
 
 const defaultBackupRootDirectoryName = "Euterpe Backups"
 
+// TODO use argument to have custom name
 var backupCommand = &cobra.Command{
 	Use:   "backup",
 	Short: "Backs up your device's audio files to a specified folder",
