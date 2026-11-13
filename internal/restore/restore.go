@@ -61,7 +61,7 @@ func prepareRestore(destination, backupPath string) (restorePlan, error) {
 	backupSize := fileio.CalculateFileListSize(filesToRestore)
 	filesToDeleteSize := fileio.CalculateFileListSize(filesToDelete)
 	sizeDifference := backupSize - filesToDeleteSize
-	err = fileio.CheckIfSufficientSpaceExists(destination, sizeDifference) // BUG: bad calculation
+	err = fileio.CheckIfSufficientSpaceExists(destination, sizeDifference)
 	if err != nil {
 		return restorePlan{}, err
 	}
