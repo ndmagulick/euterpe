@@ -5,7 +5,7 @@ import (
 	"euterpe/internal/directorydiff"
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
-	"euterpe/internal/ui"
+	"euterpe/ui"
 	"fmt"
 	"log"
 )

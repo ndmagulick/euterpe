@@ -3,7 +3,7 @@ package backup
 import (
 	"errors"
 	"euterpe/internal/fileio"
-	"euterpe/internal/ui"
+	"euterpe/ui"
 	"fmt"
 	"maps"
 	"os"

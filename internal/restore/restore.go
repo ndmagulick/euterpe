@@ -4,7 +4,7 @@ import (
 	"errors"
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
-	"euterpe/internal/ui"
+	"euterpe/ui"
 	"fmt"
 	"maps"
 	"os"
@@ -42,7 +42,7 @@ func Restore(destination, backupPath string) error {
 
 	err = filecache.ClearCache()
 	if err != nil {
-		return fmt.Errorf("purging cache")
+		return fmt.Errorf("purging cache: %w", err)
 	}
 
 	return nil

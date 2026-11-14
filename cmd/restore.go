@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"euterpe/internal/ui"
+	"euterpe/ui"
 	"fmt"
 	"os"
 	"path/filepath"
