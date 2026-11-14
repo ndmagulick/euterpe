@@ -208,15 +208,14 @@ func CalculateFileListSize(fileList []FileData) int64 {
 	return total
 }
 
-// TODO rename sizeOfSync
-func CheckIfSufficientSpaceExists(destinationPath string, sizeOfSync int64) error {
+func CheckIfSufficientSpaceExists(destinationPath string, sizeOfChange int64) error {
 	usage, err := disk.Usage(destinationPath)
 	if err != nil {
 		return fmt.Errorf("checkIfSufficientSpaceExists: %w", err)
 	}
 
-	if sizeOfSync > int64(usage.Free) {
-		return fmt.Errorf("insufficient space at %s: need %d bytes, but only %d bytes available", destinationPath, sizeOfSync, usage.Free)
+	if sizeOfChange > int64(usage.Free) {
+		return fmt.Errorf("insufficient space at %s: need %d bytes, but only %d bytes available", destinationPath, sizeOfChange, usage.Free)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"euterpe/internal/backup"
+	"euterpe/internal/restore"
 	"euterpe/ui"
 	"fmt"
 
@@ -32,20 +33,19 @@ var restoreCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		directories, err := backup.GetBackupDirectories(backupRoot)
 		if err != nil {
 			return err
 		}
 
-		options, err := ui.ConstructSelectMenuOptions(directories)
+		backupMenu, err := ui.NewSelectMenu(backupMenuTitle, directories, &backupSelection)
 		if err != nil {
 			return err
 		}
-
-		backupMenu := ui.NewSelectMenu(backupMenuTitle, options, &backupSelection)
 		backupMenu.Run()
 
-		fmt.Printf("%s", backupSelection)
+		err = restore.Restore(config.DestinationFilePath, backupSelection)
 
 		return nil
 	},

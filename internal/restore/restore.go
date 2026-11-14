@@ -7,7 +7,6 @@ import (
 	"euterpe/ui"
 	"fmt"
 	"maps"
-	"os"
 	"slices"
 )
 
@@ -18,37 +17,33 @@ type restorePlan struct {
 }
 
 func Restore(destination, backupPath string) error {
-	_, err := os.Stat(backupPath)
-	if err != nil {
-		return err
-	}
-	restorePlan, err := prepareRestore(destination, backupPath)
+	plan, err := planRestore(destination, backupPath)
 	if err != nil {
 		return err
 	}
 
-	err = fileio.DeleteFiles(restorePlan.FilesToDelete, destination)
+	err = filecache.ClearCache() // Delete all entries from table
+	if err != nil {
+		return fmt.Errorf("purging cache: %w", err)
+	}
+
+	err = fileio.DeleteFiles(plan.FilesToDelete, destination)
 	if err != nil {
 		return err
 	}
 
-	onProgress, finish := ui.NewProgressBar("restoring", restorePlan.RestoreSize)
-	copyResults := fileio.CopyFilesConcurrent(restorePlan.FilesToRestore, backupPath, destination, onProgress)
+	onProgress, finish := ui.NewProgressBar("restoring", plan.RestoreSize)
+	copyResults := fileio.CopyFilesConcurrent(plan.FilesToRestore, backupPath, destination, onProgress)
 	finish()
 	copyErrors := fileio.CollectCopyErrors(copyResults)
 	if len(copyErrors) > 0 {
-		return fmt.Errorf("%d of %d files failed to copy: %w", len(copyErrors), len(restorePlan.FilesToRestore), errors.Join(copyErrors...))
-	}
-
-	err = filecache.ClearCache()
-	if err != nil {
-		return fmt.Errorf("purging cache: %w", err)
+		return fmt.Errorf("%d of %d files failed to copy: %w", len(copyErrors), len(plan.FilesToRestore), errors.Join(copyErrors...))
 	}
 
 	return nil
 }
 
-func prepareRestore(destination, backupPath string) (restorePlan, error) {
+func planRestore(destination, backupPath string) (restorePlan, error) {
 	backupFileMap, err := fileio.ReadDirectory(backupPath)
 	if err != nil {
 		return restorePlan{}, err

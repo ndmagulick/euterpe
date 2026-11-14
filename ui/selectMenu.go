@@ -6,17 +6,22 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-func NewSelectMenu(title string, options []huh.Option[string], selection *string) *huh.Form {
+func NewSelectMenu(title string, options map[string]string, selection *string) (*huh.Form, error) {
+	menuOptions, err := newSelectMenuOptions(options)
+	if err != nil {
+		return nil, fmt.Errorf("building select menu: %w", err)
+	}
+
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(title).
 				Options(
-					options...,
-				).Value(selection))).WithTheme(huh.ThemeBase())
+					menuOptions...,
+				).Value(selection))).WithTheme(huh.ThemeBase()), nil
 }
 
-func ConstructSelectMenuOptions(input map[string]string) ([]huh.Option[string], error) {
+func newSelectMenuOptions(input map[string]string) ([]huh.Option[string], error) {
 	if len(input) == 0 {
 		return nil, fmt.Errorf("constructing options, no entries exist")
 	}

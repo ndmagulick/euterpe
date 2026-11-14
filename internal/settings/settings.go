@@ -34,6 +34,8 @@ func ReadSettings() (settings Settings, err error) {
 	return settings, nil
 }
 
+// TODO add checks to see if path and destination are the same, and if all paths overlap
+// also check to see if these paths are directories
 func ValidateSettings(settings Settings) error {
 	if _, err := os.Stat(settings.SourceFilePath); os.IsNotExist(err) {
 		return fmt.Errorf("validateSettings: %w", err)
