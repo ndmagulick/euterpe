@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+const defaultBackupRootDirectoryName = "Euterpe Backups"
 const backupDirectoryNameTimeStamp = "2006-01-02_15-04-05"
 
 func Backup(devicePath, backupRootPath string) (string, error) {
@@ -42,6 +43,59 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 	}
 
 	return backupDirectoryPath, nil
+}
+
+func ValidateBackupRootPath(backupRootPath string) (string, error) {
+	if backupRootPath == "" {
+		return createDefaultBackupRootDirectory()
+	}
+
+	info, err := os.Stat(backupRootPath)
+	if err != nil {
+		return "", fmt.Errorf("backup directory %q: %w", backupRootPath, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("back up path %q is not a directory", backupRootPath)
+	}
+
+	return backupRootPath, nil
+}
+
+func createDefaultBackupRootDirectory() (string, error) {
+	homePath, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("accessing home directory to create default backup directory: %w", err)
+	}
+
+	defaultRootPath := filepath.Join(homePath, defaultBackupRootDirectoryName)
+	err = os.MkdirAll(defaultRootPath, 0o755)
+	if err != nil {
+		return "", fmt.Errorf("creating default backup directory %q: %w", defaultRootPath, err)
+	}
+
+	fmt.Printf("using default backup directory at %s\n", defaultRootPath)
+
+	return defaultRootPath, nil
+}
+
+func GetBackupDirectories(backupRootPath string) (map[string]string, error) {
+	directoryMap := make(map[string]string)
+	entries, err := os.ReadDir(backupRootPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			directoryMap[entry.Name()] = filepath.Join(backupRootPath, entry.Name())
+		}
+	}
+
+	if len(directoryMap) == 0 {
+		return nil, fmt.Errorf("no backups found\n")
+	}
+
+	return directoryMap, nil
 }
 
 func createBackupDirectory(backupRootPath string) (string, error) {
