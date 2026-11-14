@@ -29,6 +29,7 @@ Claude was only used for review and to be a rubber ducky.
 - Status command (last sync, library size, device free space, etc.)
 - Edit config via command line
 - Verify config via command line
+- Make cache better/more robust
 
 #### Much Later
 
