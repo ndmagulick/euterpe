@@ -23,7 +23,7 @@ Claude was only used for review and to be a rubber ducky.
 
 ## Things To Do Still
 
-- Fix the tests
+- Fix/add tests
 - Make a proper README
 - Backup management
 - Status command (last sync, library size, device free space, etc.)
