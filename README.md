@@ -25,12 +25,13 @@ Claude was only used for review and to be a rubber ducky.
 
 - Fix the tests
 - Make a proper README
-- Print space
-- Add command to restore
+- Backup management
+- Status command (last sync, library size, device free space, etc.)
 - Edit config via command line
 - Verify config via command line
 
-#### Much Later (incomplete)
+#### Much Later
 
 - Add support for expandable storage
 - Add support for subdirectories
+- Playlists?
