@@ -22,7 +22,7 @@ func Restore(destination, backupPath string) error {
 		return err
 	}
 
-	err = filecache.ClearCache() // Delete all entries from table
+	err = filecache.ClearCache()
 	if err != nil {
 		return fmt.Errorf("purging cache: %w", err)
 	}
