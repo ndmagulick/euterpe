@@ -110,6 +110,10 @@ func LoadCachedRecords() (map[string]database.FileHashRecord, error) {
 	return database.GetAllFiles()
 }
 
+func ClearCache() error {
+	return database.ClearTable()
+}
+
 func hashFile(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {

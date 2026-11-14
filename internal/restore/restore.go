@@ -2,6 +2,7 @@ package restore
 
 import (
 	"errors"
+	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
 	"euterpe/internal/ui"
 	"fmt"
@@ -39,8 +40,10 @@ func Restore(destination, backupPath string) error {
 		return fmt.Errorf("%d of %d files failed to copy: %w", len(copyErrors), len(restorePlan.FilesToRestore), errors.Join(copyErrors...))
 	}
 
-	// invalidate cache entries
-	// new function here
+	err = filecache.ClearCache()
+	if err != nil {
+		return fmt.Errorf("purging cache")
+	}
 
 	return nil
 }

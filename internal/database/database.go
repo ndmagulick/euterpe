@@ -194,3 +194,19 @@ func DeleteRecords(orphanedFiles []string) error {
 
 	return transaction.Commit()
 }
+
+func ClearTable() error {
+	transaction, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer transaction.Rollback()
+
+	insertStatement, err := transaction.Prepare(`DELETE FROM fileHashes`)
+	if err != nil {
+		return err
+	}
+	defer insertStatement.Close()
+
+	return transaction.Commit()
+}
