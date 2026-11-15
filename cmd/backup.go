@@ -30,12 +30,7 @@ var backupCommand = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		backupRootPath, err := backup.ValidateBackupRootPath(config.BackupRootDirectoryPath, config.DestinationDirectoryPath)
-		if err != nil {
-			return err
-		}
-
-		backupFolderName, err := backup.Backup(config.DestinationDirectoryPath, backupRootPath)
+		backupFolderName, err := backup.Backup(config.DestinationDirectoryPath, config.BackupRootDirectoryPath)
 		if err != nil {
 			return err
 		}

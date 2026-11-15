@@ -202,11 +202,16 @@ func ClearTable() error {
 	}
 	defer transaction.Rollback()
 
-	insertStatement, err := transaction.Prepare(`DELETE FROM fileHashes`)
+	deleteStatement, err := transaction.Prepare(`DELETE FROM fileHashes`)
 	if err != nil {
 		return err
 	}
-	defer insertStatement.Close()
+	defer deleteStatement.Close()
+
+	_, err = deleteStatement.Exec()
+	if err != nil {
+		return err
+	}
 
 	return transaction.Commit()
 }
