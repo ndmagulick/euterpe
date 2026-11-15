@@ -78,12 +78,6 @@ func ResolveBackupSettings(backupRootDirectoryPath string, destinationDirectoryP
 		return "", fmt.Errorf("backup and destination paths overlap")
 	}
 
-	//move this out so we only do one thing here
-	//err = updateBackupPathSetting(backupRootPath)
-	// if err != nil {
-	// 	return "", err
-	// }
-
 	return backupRootPath, nil
 }
 
@@ -104,7 +98,7 @@ func ensureBackupRoot(backupRootPath string) (string, error) {
 	return backupRootPath, nil
 }
 
-func updateBackupPathSetting(backupPath string) error {
+func UpdateBackupPathSetting(backupPath string) error {
 	settings, err := ReadSettings()
 	if err != nil {
 		return fmt.Errorf("updateBackupPath: %w", err)

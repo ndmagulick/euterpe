@@ -3,6 +3,7 @@ package cmd
 import (
 	"euterpe/internal/backup"
 	"euterpe/internal/restore"
+	"euterpe/internal/settings"
 	"euterpe/ui"
 	"fmt"
 
@@ -17,6 +18,22 @@ var restoreCommand = &cobra.Command{
 	Use:   "restore",
 	Short: "Restores your device's music library to a previous state from a backup folder",
 	Long:  "",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		backupRoot, err := settings.ResolveBackupSettings(config.BackupRootDirectoryPath, config.DestinationDirectoryPath)
+		if err != nil {
+			return err
+		}
+
+		if backupRoot != config.BackupRootDirectoryPath {
+			config.BackupRootDirectoryPath = backupRoot
+			err = settings.UpdateBackupPathSetting(backupRoot)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var confirm bool
 		confirmation := ui.NewConfirmation(restoreConfirmationTitle, restoreConfirmationDescription, &confirm)
