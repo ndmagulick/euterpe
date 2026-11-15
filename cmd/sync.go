@@ -12,7 +12,7 @@ var syncCommand = &cobra.Command{
 	Short: "Syncs your music library to your mp3 player",
 	Long:  "Syncs the music library specified in your settings.json file to the mp3 player path also specified in your settings.json file.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		syncReport, err := filesync.Sync(config.SourceFilePath, config.DestinationFilePath)
+		syncReport, err := filesync.Sync(config.SourceDirectoryPath, config.DestinationDirectoryPath)
 		for _, cacheError := range syncReport.CacheErrors {
 			log.Printf("warning: %v", cacheError)
 		}

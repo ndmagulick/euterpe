@@ -23,7 +23,7 @@ func TestValidateSettings(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.testCase, func(t *testing.T) {
-			actual := ValidateSettings(Settings{SourceFilePath: testCase.sourcePath, DestinationFilePath: testCase.destinationPath})
+			actual := ValidateSettings(Settings{SourceDirectoryPath: testCase.sourcePath, DestinationDirectoryPath: testCase.destinationPath})
 			if testCase.expectError {
 				assert.Error(t, actual)
 			} else {

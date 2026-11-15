@@ -14,6 +14,7 @@ type FileHashRecord struct {
 	FileHash         string
 }
 
+// merge these
 type BatchRecord struct {
 	Name         string
 	Size         int64

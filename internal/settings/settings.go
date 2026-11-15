@@ -2,15 +2,16 @@ package settings
 
 import (
 	"encoding/json"
+	"euterpe/internal/fileio"
 	"fmt"
 	"io"
 	"os"
 )
 
 type Settings struct {
-	SourceFilePath      string `json:"source"`
-	DestinationFilePath string `json:"destination"`
-	BackupRoot          string `json:"backupRoot"`
+	SourceDirectoryPath      string `json:"source"`
+	DestinationDirectoryPath string `json:"destination"`
+	BackupRootDirectoryPath  string `json:"backupRoot"`
 }
 
 func ReadSettings() (settings Settings, err error) {
@@ -34,15 +35,37 @@ func ReadSettings() (settings Settings, err error) {
 	return settings, nil
 }
 
-// TODO add checks to see if path and destination are the same, and if all paths overlap
-// also check to see if these paths are directories
 func ValidateSettings(settings Settings) error {
-	if _, err := os.Stat(settings.SourceFilePath); os.IsNotExist(err) {
+	err := validateSettingsPath(settings.SourceDirectoryPath)
+	if err != nil {
+		return err
+	}
+
+	err = validateSettingsPath(settings.DestinationDirectoryPath)
+	if err != nil {
+		return err
+	}
+
+	overlapping, err := fileio.PathsOverlap(settings.SourceDirectoryPath, settings.DestinationDirectoryPath)
+	if err != nil {
+		return err
+	}
+
+	if overlapping {
+		return fmt.Errorf("source and destination paths overlap")
+	}
+
+	return nil
+}
+
+func validateSettingsPath(path string) error {
+	pathInfo, err := os.Stat(path)
+	if err != nil {
 		return fmt.Errorf("validateSettings: %w", err)
 	}
 
-	if _, err := os.Stat(settings.DestinationFilePath); os.IsNotExist(err) {
-		return fmt.Errorf("validateSettings: %w", err)
+	if !pathInfo.IsDir() {
+		return fmt.Errorf("validateSettings: path is not a directory: %q", path)
 	}
 
 	return nil

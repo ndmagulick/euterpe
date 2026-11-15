@@ -14,7 +14,7 @@ var diffCommand = &cobra.Command{
 	Short: "Prints the folder diff between the music library and the mp3 player",
 	Long:  "Prints the folder diff between the music library and the mp3 player. It will list which files will be copied to and delete from the mp3 player during the sync process.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		diffInputs, err := directorydiff.PrepareDiffInputs(config.SourceFilePath, config.DestinationFilePath)
+		diffInputs, err := directorydiff.PrepareDiffInputs(config.SourceDirectoryPath, config.DestinationDirectoryPath)
 		if err != nil {
 			return err
 		}
@@ -32,7 +32,7 @@ func printDiff(filesToDelete, filesToCopy []fileio.FileData, syncSize int64) {
 	plus := color.GreenString("+")
 
 	if len(filesToDelete) > 0 {
-		color.Blue("%d files will be deleted from %s", len(filesToDelete), config.DestinationFilePath)
+		color.Blue("%d files will be deleted from %s", len(filesToDelete), config.DestinationDirectoryPath)
 		for _, value := range filesToDelete {
 			fmt.Printf("%s %s\n", minus, value.Name)
 		}
@@ -41,7 +41,7 @@ func printDiff(filesToDelete, filesToCopy []fileio.FileData, syncSize int64) {
 	}
 
 	if len(filesToCopy) > 0 {
-		color.Blue("%d files will be copied from %s to %s", len(filesToCopy), config.SourceFilePath, config.DestinationFilePath)
+		color.Blue("%d files will be copied from %s to %s", len(filesToCopy), config.SourceDirectoryPath, config.DestinationDirectoryPath)
 		for _, value := range filesToCopy {
 			fmt.Printf("%s %s\n", plus, value.Name)
 		}

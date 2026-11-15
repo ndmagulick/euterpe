@@ -221,3 +221,35 @@ func CheckIfSufficientSpaceExists(destinationPath string, sizeOfChange int64) er
 
 	return nil
 }
+
+func PathsOverlap(path1, path2 string) (bool, error) {
+	resolvedPath1, err := resolvePath(path1)
+	if err != nil {
+		return false, fmt.Errorf("resolving %q: %w", path1, err)
+	}
+
+	resolvedPath2, err := resolvePath(path2)
+	if err != nil {
+		return false, fmt.Errorf("resolving %q: %w", path2, err)
+	}
+
+	return pathIsWithin(resolvedPath1, resolvedPath2) || pathIsWithin(resolvedPath2, resolvedPath1), nil
+}
+
+func resolvePath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.EvalSymlinks(absolutePath)
+}
+
+func pathIsWithin(parentPath, childPath string) bool {
+	relativePath, err := filepath.Rel(parentPath, childPath)
+	if err != nil {
+		return false
+	}
+
+	return filepath.IsLocal(relativePath)
+}
