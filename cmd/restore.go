@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"errors"
 	"euterpe/internal/backup"
 	"euterpe/internal/restore"
 	"euterpe/internal/settings"
 	"euterpe/ui"
 	"fmt"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +39,14 @@ var restoreCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var confirm bool
 		confirmation := ui.NewConfirmation(restoreConfirmationTitle, restoreConfirmationDescription, &confirm)
-		confirmation.Run()
+		err := confirmation.Run()
+		if err != nil {
+			if errors.Is(err, huh.ErrUserAborted) {
+				return nil
+			}
+
+			return err
+		}
 
 		if !confirm {
 			fmt.Printf("restore aborted\n")
@@ -54,7 +63,14 @@ var restoreCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		backupMenu.Run()
+		err = backupMenu.Run()
+		if err != nil {
+			if errors.Is(err, huh.ErrUserAborted) {
+				return nil
+			}
+
+			return err
+		}
 
 		err = restore.Restore(config.DestinationDirectoryPath, backupSelection)
 
