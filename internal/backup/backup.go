@@ -47,7 +47,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 
 func ValidateBackupRootPath(backupRootPath, destinationFolderPath string) (string, error) {
 	if backupRootPath == "" {
-		return createDefaultBackupRootDirectory()
+		return CreateDefaultBackupRootDirectory()
 	}
 
 	info, err := os.Stat(backupRootPath)
@@ -70,7 +70,7 @@ func ValidateBackupRootPath(backupRootPath, destinationFolderPath string) (strin
 	return backupRootPath, nil
 }
 
-func createDefaultBackupRootDirectory() (string, error) {
+func CreateDefaultBackupRootDirectory() (string, error) {
 	homePath, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("accessing home directory to create default backup directory: %w", err)

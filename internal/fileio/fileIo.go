@@ -223,6 +223,10 @@ func CheckIfSufficientSpaceExists(destinationPath string, sizeOfChange int64) er
 }
 
 func PathsOverlap(path1, path2 string) (bool, error) {
+	if path1 == "" || path2 == "" {
+		return false, fmt.Errorf("pathsOverlap: empty path entered")
+	}
+
 	resolvedPath1, err := resolvePath(path1)
 	if err != nil {
 		return false, fmt.Errorf("resolving %q: %w", path1, err)
@@ -252,4 +256,17 @@ func pathIsWithin(parentPath, childPath string) bool {
 	}
 
 	return filepath.IsLocal(relativePath)
+}
+
+func ValidateDirectoryPath(path string) error {
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("validateSettings: %w", err)
+	}
+
+	if !pathInfo.IsDir() {
+		return fmt.Errorf("validateSettings: path is not a directory: %q", path)
+	}
+
+	return nil
 }

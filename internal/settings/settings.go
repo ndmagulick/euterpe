@@ -2,6 +2,7 @@ package settings
 
 import (
 	"encoding/json"
+	"euterpe/internal/backup"
 	"euterpe/internal/fileio"
 	"fmt"
 	"io"
@@ -35,18 +36,18 @@ func ReadSettings() (settings Settings, err error) {
 	return settings, nil
 }
 
-func ValidateSettings(settings Settings) error {
-	err := validateSettingsPath(settings.SourceDirectoryPath)
+func ValidateSyncSettings(sourceDirectoryPath, destinationDirectoryPath string) error {
+	err := fileio.ValidateDirectoryPath(sourceDirectoryPath)
 	if err != nil {
 		return err
 	}
 
-	err = validateSettingsPath(settings.DestinationDirectoryPath)
+	err = fileio.ValidateDirectoryPath(destinationDirectoryPath)
 	if err != nil {
 		return err
 	}
 
-	overlapping, err := fileio.PathsOverlap(settings.SourceDirectoryPath, settings.DestinationDirectoryPath)
+	overlapping, err := fileio.PathsOverlap(sourceDirectoryPath, destinationDirectoryPath)
 	if err != nil {
 		return err
 	}
@@ -58,14 +59,75 @@ func ValidateSettings(settings Settings) error {
 	return nil
 }
 
-func validateSettingsPath(path string) error {
-	pathInfo, err := os.Stat(path)
+func ResolveBackupSettings(backupRootDirectoryPath string, destinationDirectoryPath string) (string, error) {
+	err := fileio.ValidateDirectoryPath(destinationDirectoryPath)
 	if err != nil {
-		return fmt.Errorf("validateSettings: %w", err)
+		return "", err
 	}
 
-	if !pathInfo.IsDir() {
-		return fmt.Errorf("validateSettings: path is not a directory: %q", path)
+	backupRootPath, err := ensureBackupRoot(backupRootDirectoryPath)
+	if err != nil {
+		return "", err
+	}
+	overlapping, err := fileio.PathsOverlap(backupRootPath, destinationDirectoryPath)
+	if err != nil {
+		return "", err
+	}
+
+	if overlapping {
+		return "", fmt.Errorf("backup and destination paths overlap")
+	}
+
+	//move this out so we only do one thing here
+	//err = updateBackupPathSetting(backupRootPath)
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	return backupRootPath, nil
+}
+
+func ensureBackupRoot(backupRootPath string) (string, error) {
+	if backupRootPath == "" {
+		defaultBackupRootPath, err := backup.CreateDefaultBackupRootDirectory()
+		if err != nil {
+			return "", err
+		}
+
+		return defaultBackupRootPath, nil
+	}
+	err := fileio.ValidateDirectoryPath(backupRootPath)
+	if err != nil {
+		return "", err
+	}
+
+	return backupRootPath, nil
+}
+
+func updateBackupPathSetting(backupPath string) error {
+	settings, err := ReadSettings()
+	if err != nil {
+		return fmt.Errorf("updateBackupPath: %w", err)
+	}
+
+	settings.BackupRootDirectoryPath = backupPath
+	err = writeSettings(settings)
+	if err != nil {
+		return fmt.Errorf("updateBackupPath: %w", err)
+	}
+
+	return nil
+}
+
+func writeSettings(settings Settings) error {
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("writeSettings: %w", err)
+	}
+
+	err = os.WriteFile("settings.json", data, 0o644)
+	if err != nil {
+		return fmt.Errorf("writeSettings: %w", err)
 	}
 
 	return nil
