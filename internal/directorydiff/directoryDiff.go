@@ -55,7 +55,7 @@ func Diff(sourceFiles, destinationFiles map[string]fileio.FileData, cacheUpdates
 		SyncSize:      syncSize}
 }
 
-func compareContents(sourceFiles map[string]fileio.FileData, destinationFiles map[string]fileio.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []fileio.FileData) {
+func compareContents(sourceFiles, destinationFiles map[string]fileio.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []fileio.FileData) {
 	filesToDelete = []fileio.FileData{}
 	filesToCopy = []fileio.FileData{}
 
