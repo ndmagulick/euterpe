@@ -114,7 +114,7 @@ func UpdateBackupPathSetting(backupPath string) error {
 }
 
 func writeSettings(settings Settings) error {
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := json.MarshalIndent(settings, "", "    ")
 	if err != nil {
 		return fmt.Errorf("writeSettings: %w", err)
 	}
