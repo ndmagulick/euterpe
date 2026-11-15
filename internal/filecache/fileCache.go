@@ -75,7 +75,7 @@ func PruneCache(sourceFiles map[string]fileio.FileData) error {
 		return err
 	}
 
-	orphanedFiles := make([]string, 0)
+	var orphanedFiles []string
 	for _, file := range filesInCache {
 		_, ok := sourceFiles[file]
 		if !ok {

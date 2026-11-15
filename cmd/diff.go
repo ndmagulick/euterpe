@@ -26,6 +26,7 @@ var diffCommand = &cobra.Command{
 	},
 }
 
+// TODO move this
 func printDiff(filesToDelete, filesToCopy []fileio.FileData, syncSize int64) {
 	minus := color.RedString("-")
 	plus := color.GreenString("+")

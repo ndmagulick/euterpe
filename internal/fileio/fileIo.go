@@ -83,6 +83,7 @@ func ReadDirectory(path string) (map[string]FileData, error) {
 	return files, nil
 }
 
+// TODO add progress bar
 func DeleteFiles(filesToDelete []FileData, path string) error {
 	cross := color.RedString("✕")
 

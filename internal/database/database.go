@@ -118,8 +118,7 @@ func GetAllFileNames() ([]string, error) {
 	}
 	defer rows.Close()
 
-	fileNameList := make([]string, 0)
-
+	var fileNameList []string
 	for rows.Next() {
 		var fileName string
 		err = rows.Scan(&fileName)
