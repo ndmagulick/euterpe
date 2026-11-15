@@ -28,7 +28,7 @@ var restoreCommand = &cobra.Command{
 		}
 
 		var backupSelection string = ""
-		backupRoot, err := backup.ValidateBackupRootPath(config.BackupRootDirectoryPath)
+		backupRoot, err := backup.ValidateBackupRootPath(config.BackupRootDirectoryPath, config.DestinationDirectoryPath)
 		if err != nil {
 			return err
 		}

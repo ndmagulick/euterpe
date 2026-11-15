@@ -45,7 +45,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 	return backupDirectoryPath, nil
 }
 
-func ValidateBackupRootPath(backupRootPath string) (string, error) {
+func ValidateBackupRootPath(backupRootPath, destinationFolderPath string) (string, error) {
 	if backupRootPath == "" {
 		return createDefaultBackupRootDirectory()
 	}
@@ -56,6 +56,15 @@ func ValidateBackupRootPath(backupRootPath string) (string, error) {
 	}
 	if !info.IsDir() {
 		return "", fmt.Errorf("back up path %q is not a directory", backupRootPath)
+	}
+
+	isOverlapping, err := fileio.PathsOverlap(backupRootPath, destinationFolderPath)
+	if err != nil {
+		return "", err
+	}
+
+	if isOverlapping {
+		return "", fmt.Errorf("backup and destination folder paths overlap")
 	}
 
 	return backupRootPath, nil

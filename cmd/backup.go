@@ -13,7 +13,7 @@ var backupCommand = &cobra.Command{
 	Short: "Backs up your device's audio files to a specified folder",
 	Long:  "Backs up your device's audio files to a specified folder under a folder with the timestamp of when the backup took place",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		backupRootPath, err := backup.ValidateBackupRootPath(config.BackupRootDirectoryPath)
+		backupRootPath, err := backup.ValidateBackupRootPath(config.BackupRootDirectoryPath, config.DestinationDirectoryPath)
 		if err != nil {
 			return err
 		}
