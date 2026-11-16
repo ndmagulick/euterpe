@@ -152,6 +152,9 @@ func GetAllFiles() (map[string]FileHashRecord, error) {
 		var dbLastModifiedTime int64
 		var dbFileHash string
 		err = rows.Scan(&dbFileName, &dbFileSize, &dbLastModifiedTime, &dbFileHash)
+		if err != nil {
+			return nil, err
+		}
 
 		filesInCache[dbFileName] = FileHashRecord{FileName: dbFileName, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}
 	}
