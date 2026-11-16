@@ -3,7 +3,6 @@ package settings
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -16,22 +15,16 @@ type Settings struct {
 	BackupRootDirectoryPath  string `json:"backupRoot"`
 }
 
-func ReadSettings(settingsPath string) (settings Settings, err error) {
-	file, err := os.Open(settingsPath)
+func ReadSettings(settingsPath string) (Settings, error) {
+	contentBytes, err := os.ReadFile(settingsPath)
 	if err != nil {
-		return Settings{}, fmt.Errorf("readSettings: %w", err)
+		return Settings{}, fmt.Errorf("readSettings %q: %w", settingsPath, err)
 	}
 
-	defer file.Close()
-
-	bytes, err := io.ReadAll(file)
+	var settings Settings
+	err = json.Unmarshal(contentBytes, &settings)
 	if err != nil {
-		return Settings{}, fmt.Errorf("readSettings: %w", err)
-	}
-
-	err = json.Unmarshal(bytes, &settings)
-	if err != nil {
-		return Settings{}, fmt.Errorf("readSettings: %w", err)
+		return Settings{}, fmt.Errorf("readSettings %q: %w", settingsPath, err)
 	}
 
 	return settings, nil
