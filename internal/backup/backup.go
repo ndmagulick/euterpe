@@ -72,8 +72,6 @@ func CreateDefaultBackupRootDirectory() (string, error) {
 		return "", fmt.Errorf("creating default backup directory %q: %w", defaultRootPath, err)
 	}
 
-	fmt.Printf("using default backup directory at %s\n", defaultRootPath)
-
 	return defaultRootPath, nil
 }
 

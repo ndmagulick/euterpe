@@ -58,6 +58,8 @@ func ensureBackupRoot(backupRootPath string) (string, error) {
 			return "", err
 		}
 
+		fmt.Printf("using default backup directory at %s\n", defaultBackupRootPath)
+
 		return defaultBackupRootPath, nil
 	}
 	err := fileio.ValidateDirectoryPath(backupRootPath)
