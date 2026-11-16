@@ -1,7 +1,9 @@
 package fileio
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -17,6 +19,9 @@ func DeleteFiles(filesToDelete []FileData, path string) error {
 		err := os.Remove(fileToDeletePath)
 
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
 			return fmt.Errorf("deleteFiles: %w", err)
 		}
 
