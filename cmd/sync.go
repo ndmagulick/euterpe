@@ -25,10 +25,6 @@ var syncCommand = &cobra.Command{
 			log.Printf("warning: %v", cacheError)
 		}
 
-		for _, copyError := range syncReport.CopyErrors {
-			log.Printf("copy failed: %v", copyError)
-		}
-
 		if err != nil {
 			return err
 		}

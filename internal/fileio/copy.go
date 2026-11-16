@@ -3,7 +3,6 @@ package fileio
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -80,9 +79,6 @@ func copyFileWorker(jobs <-chan FileData, results chan<- CopyResult, source stri
 		sourceFilePath := filepath.Join(source, file.Name)
 		destinationFilePath := filepath.Join(destination, file.Name)
 		err := copyFile(sourceFilePath, destinationFilePath, onProgress)
-		if err != nil {
-			log.Printf("Failed to copy %s: %v", file.Name, err)
-		}
 
 		results <- CopyResult{FileData: file, Err: err}
 	}
