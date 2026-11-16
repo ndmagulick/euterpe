@@ -1,17 +1,12 @@
 package fileio
 
 import (
-	"euterpe/internal/filter"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
-
-	"github.com/fatih/color"
-	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type ProgressFunc func(bytesCopied int64)
@@ -25,12 +20,6 @@ type progressReader struct {
 type CopyResult struct {
 	FileData FileData
 	Err      error
-}
-
-type FileData struct {
-	Name             string
-	Size             int64
-	LastModifiedTime time.Time
 }
 
 const bufferSize = 1 << 21 // 2MB buffer
@@ -49,56 +38,6 @@ func (p progressReader) Read(buffer []byte) (int, error) {
 	}
 
 	return bytesRead, err
-}
-
-func ReadDirectory(path string) (map[string]FileData, error) {
-	directoryEntries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-	}
-
-	files := make(map[string]FileData)
-	for _, file := range directoryEntries {
-		if file.IsDir() {
-			continue
-		}
-
-		extension := filepath.Ext(file.Name())
-		if !filter.IsAudio(extension) {
-			continue
-		}
-
-		fileInfo, err := file.Info()
-		if err != nil {
-			return nil, fmt.Errorf("readDirectory(%s): %w", path, err)
-		}
-
-		files[file.Name()] = FileData{
-			Name:             file.Name(),
-			Size:             fileInfo.Size(),
-			LastModifiedTime: fileInfo.ModTime(),
-		}
-	}
-
-	return files, nil
-}
-
-// TODO add progress bar
-func DeleteFiles(filesToDelete []FileData, path string) error {
-	cross := color.RedString("✕")
-
-	for _, file := range filesToDelete {
-		fileToDeletePath := filepath.Join(path, file.Name)
-		err := os.Remove(fileToDeletePath)
-
-		if err != nil {
-			return fmt.Errorf("deleteFiles: %w", err)
-		}
-
-		fmt.Printf("%s deleted %s\n", cross, file.Name)
-	}
-
-	return nil
 }
 
 func CopyFilesConcurrent(filesToCopy []FileData, source, destination string, onProgress ProgressFunc) []CopyResult {
@@ -198,75 +137,4 @@ func CollectCopyErrors(copyResults []CopyResult) []error {
 	}
 
 	return copyErrors
-}
-
-func CalculateFileListSize(fileList []FileData) int64 {
-	var total int64
-	for _, fileToCopy := range fileList {
-		total += fileToCopy.Size
-	}
-
-	return total
-}
-
-func CheckIfSufficientSpaceExists(destinationPath string, sizeOfChange int64) error {
-	usage, err := disk.Usage(destinationPath)
-	if err != nil {
-		return fmt.Errorf("checkIfSufficientSpaceExists: %w", err)
-	}
-
-	if sizeOfChange > int64(usage.Free) {
-		return fmt.Errorf("insufficient space at %s: need %d bytes, but only %d bytes available", destinationPath, sizeOfChange, usage.Free)
-	}
-
-	return nil
-}
-
-func PathsOverlap(path1, path2 string) (bool, error) {
-	if path1 == "" || path2 == "" {
-		return false, fmt.Errorf("pathsOverlap: empty path entered")
-	}
-
-	resolvedPath1, err := resolvePath(path1)
-	if err != nil {
-		return false, fmt.Errorf("resolving %q: %w", path1, err)
-	}
-
-	resolvedPath2, err := resolvePath(path2)
-	if err != nil {
-		return false, fmt.Errorf("resolving %q: %w", path2, err)
-	}
-
-	return pathIsWithin(resolvedPath1, resolvedPath2) || pathIsWithin(resolvedPath2, resolvedPath1), nil
-}
-
-func resolvePath(path string) (string, error) {
-	absolutePath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.EvalSymlinks(absolutePath)
-}
-
-func pathIsWithin(parentPath, childPath string) bool {
-	relativePath, err := filepath.Rel(parentPath, childPath)
-	if err != nil {
-		return false
-	}
-
-	return filepath.IsLocal(relativePath)
-}
-
-func ValidateDirectoryPath(path string) error {
-	pathInfo, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("validateSettings: %w", err)
-	}
-
-	if !pathInfo.IsDir() {
-		return fmt.Errorf("validateSettings: path is not a directory: %q", path)
-	}
-
-	return nil
 }
