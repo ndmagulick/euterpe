@@ -83,7 +83,7 @@ func PrintDiff(diffResult DiffResult, sourcePath, destinationPath string) {
 	if diffResult.SyncSize > 0 {
 		fmt.Printf("\n%d bytes will be used\n", diffResult.SyncSize)
 	} else if diffResult.SyncSize < 0 {
-		fmt.Printf("\n%d bytes will be freed\n", diffResult.SyncSize)
+		fmt.Printf("\n%d bytes will be freed\n", -diffResult.SyncSize)
 	} else {
 		fmt.Printf("\nNo bytes will be freed or used\n")
 	}

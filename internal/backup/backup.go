@@ -9,11 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 )
 
 const defaultBackupRootDirectoryName = "Euterpe Backups"
 const backupDirectoryNameTimeStamp = "2006-01-02_15-04-05"
+const partialSuffix = ".partial"
 
 func Backup(devicePath, backupRootPath string) (string, error) {
 	deviceFileMap, err := fileio.ReadDirectory(devicePath)
@@ -25,6 +27,13 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 		return "", fmt.Errorf("device has no audio files to backup")
 	}
 
+	deviceFiles := slices.Collect(maps.Values(deviceFileMap))
+	backupSize := fileio.CalculateFileListSize(deviceFiles)
+	err = fileio.CheckIfSufficientSpaceExists(backupRootPath, backupSize)
+	if err != nil {
+		return "", err
+	}
+
 	backupDirectoryPath, err := createBackupDirectory(backupRootPath)
 	if err != nil {
 		return "", err
@@ -32,17 +41,23 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 
 	fmt.Printf("Backing up device files to %s\n", backupDirectoryPath)
 
-	deviceFiles := slices.Collect(maps.Values(deviceFileMap))
-	onProgress, finish := ui.NewProgressBar("backing up", fileio.CalculateFileListSize(deviceFiles))
+	onProgress, finish := ui.NewProgressBar("backing up", backupSize)
 	copyResults := fileio.CopyFilesConcurrent(deviceFiles, devicePath, backupDirectoryPath, onProgress)
 	finish()
 
 	copyErrors := fileio.CollectCopyErrors(copyResults)
 	if len(copyErrors) > 0 {
-		return backupDirectoryPath, fmt.Errorf("%d of %d files failed to backup: %w", len(copyErrors), len(deviceFileMap), errors.Join(copyErrors...))
+		copyErrorCollection := fmt.Errorf("%d of %d files failed to backup: %w", len(copyErrors), len(deviceFileMap), errors.Join(copyErrors...))
+
+		var cleanupError error
+		removeError := os.RemoveAll(backupDirectoryPath)
+		if removeError != nil {
+			cleanupError = fmt.Errorf("removing partial backup %q: %w", backupDirectoryPath, removeError)
+		}
+		return "", errors.Join(copyErrorCollection, cleanupError)
 	}
 
-	return backupDirectoryPath, nil
+	return commitBackup(backupDirectoryPath)
 }
 
 func CreateDefaultBackupRootDirectory() (string, error) {
@@ -70,20 +85,20 @@ func GetBackupDirectories(backupRootPath string) (map[string]string, error) {
 	}
 
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() && !strings.HasSuffix(entry.Name(), partialSuffix) {
 			directoryMap[entry.Name()] = filepath.Join(backupRootPath, entry.Name())
 		}
 	}
 
 	if len(directoryMap) == 0 {
-		return nil, fmt.Errorf("no backups found\n")
+		return nil, fmt.Errorf("no backups found")
 	}
 
 	return directoryMap, nil
 }
 
 func createBackupDirectory(backupRootPath string) (string, error) {
-	backupDirectoryPath := filepath.Join(backupRootPath, time.Now().Format(backupDirectoryNameTimeStamp))
+	backupDirectoryPath := filepath.Join(backupRootPath, time.Now().Format(backupDirectoryNameTimeStamp)+partialSuffix)
 	err := os.MkdirAll(backupRootPath, 0o755)
 	if err != nil {
 		return "", err
@@ -95,4 +110,14 @@ func createBackupDirectory(backupRootPath string) (string, error) {
 	}
 
 	return backupDirectoryPath, nil
+}
+
+func commitBackup(backupDirectoryPath string) (string, error) {
+	committedBackupPath := strings.TrimSuffix(backupDirectoryPath, partialSuffix)
+	err := os.Rename(backupDirectoryPath, committedBackupPath)
+	if err != nil {
+		return "", fmt.Errorf("committing backup: %w", err)
+	}
+
+	return committedBackupPath, nil
 }
