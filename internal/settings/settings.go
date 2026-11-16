@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
+
+const SettingsFileName = "settings.json"
 
 type Settings struct {
 	SourceDirectoryPath      string `json:"source"`
@@ -13,8 +16,8 @@ type Settings struct {
 	BackupRootDirectoryPath  string `json:"backupRoot"`
 }
 
-func ReadSettings() (settings Settings, err error) {
-	file, err := os.Open("settings.json")
+func ReadSettings(settingsPath string) (settings Settings, err error) {
+	file, err := os.Open(settingsPath)
 	if err != nil {
 		return Settings{}, fmt.Errorf("readSettings: %w", err)
 	}
@@ -35,14 +38,15 @@ func ReadSettings() (settings Settings, err error) {
 }
 
 // TODO expand this for when we allow updating of settings via command line
-func UpdateBackupPathSetting(backupPath string) error {
-	settings, err := ReadSettings()
+func UpdateBackupPathSetting(executableDirectoryPath, backupPath string) error {
+	fullSettingsPath := filepath.Join(executableDirectoryPath, SettingsFileName)
+	settings, err := ReadSettings(fullSettingsPath)
 	if err != nil {
 		return fmt.Errorf("updateBackupPath: %w", err)
 	}
 
 	settings.BackupRootDirectoryPath = backupPath
-	err = writeSettings(settings)
+	err = writeSettings(fullSettingsPath, settings)
 	if err != nil {
 		return fmt.Errorf("updateBackupPath: %w", err)
 	}
@@ -50,13 +54,13 @@ func UpdateBackupPathSetting(backupPath string) error {
 	return nil
 }
 
-func writeSettings(settings Settings) error {
+func writeSettings(settingsPath string, settings Settings) error {
 	data, err := json.MarshalIndent(settings, "", "    ")
 	if err != nil {
 		return fmt.Errorf("writeSettings: %w", err)
 	}
 
-	err = os.WriteFile("settings.json", data, 0o644)
+	err = os.WriteFile(settingsPath, data, 0o644)
 	if err != nil {
 		return fmt.Errorf("writeSettings: %w", err)
 	}

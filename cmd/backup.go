@@ -21,7 +21,7 @@ var backupCommand = &cobra.Command{
 
 		if backupRoot != config.BackupRootDirectoryPath {
 			config.BackupRootDirectoryPath = backupRoot
-			err = settings.UpdateBackupPathSetting(backupRoot)
+			err = settings.UpdateBackupPathSetting(executableDirectory, backupRoot)
 			if err != nil {
 				return err
 			}

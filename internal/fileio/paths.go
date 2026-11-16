@@ -37,6 +37,20 @@ func ValidateDirectoryPath(path string) error {
 	return nil
 }
 
+func GetExecutableDirectory() (string, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("getting executable path: %w", err)
+	}
+
+	resolvedPath, err := filepath.EvalSymlinks(executablePath)
+	if err != nil {
+		return "", fmt.Errorf("evaluating sym links for executable path: %w", err)
+	}
+
+	return filepath.Dir(resolvedPath), nil
+}
+
 func resolvePath(path string) (string, error) {
 	absolutePath, err := filepath.Abs(path)
 	if err != nil {

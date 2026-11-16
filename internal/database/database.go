@@ -7,6 +7,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const DatabaseName = "cache.db"
+
 type FileHashRecord struct {
 	FileName         string
 	FileSize         int64
@@ -21,11 +23,11 @@ type BatchRecord struct {
 
 var db *sql.DB
 
-func OpenDatabase() error {
+func OpenDatabase(databasePath string) error {
 	var err error
-	db, err = sql.Open("sqlite", "cache.db")
+	db, err = sql.Open("sqlite", databasePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening cache database: %w", err)
 	}
 
 	err = db.Ping()
