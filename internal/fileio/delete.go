@@ -17,7 +17,6 @@ func DeleteFiles(filesToDelete []FileData, path string) error {
 	for _, file := range filesToDelete {
 		fileToDeletePath := filepath.Join(path, file.Name)
 		err := os.Remove(fileToDeletePath)
-
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue

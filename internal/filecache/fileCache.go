@@ -32,7 +32,6 @@ func CheckForStaleFiles(path string, files map[string]fileio.FileData, filesInCa
 			continue
 		}
 
-		var sourceFileHash string
 		sourceFileHash, err := hashFile(filepath.Join(path, key))
 		if err != nil {
 			return nil, err
