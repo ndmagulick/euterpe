@@ -14,13 +14,9 @@ type FileHashRecord struct {
 	FileHash         string
 }
 
-// merge these
 type BatchRecord struct {
-	Name         string
-	Size         int64
-	ModifiedTime int64
-	FileHash     string
-	IsInsert     bool
+	Data     FileHashRecord
+	IsInsert bool
 }
 
 var db *sql.DB
@@ -83,17 +79,17 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 
 	for _, batchRecord := range batchRecords {
 		if batchRecord.IsInsert {
-			_, err = insertStatement.Exec(batchRecord.Name, batchRecord.Size, batchRecord.ModifiedTime, batchRecord.FileHash)
+			_, err = insertStatement.Exec(batchRecord.Data.FileName, batchRecord.Data.FileSize, batchRecord.Data.LastModifiedTime, batchRecord.Data.FileHash)
 			if err != nil {
-				return fmt.Errorf("cache insert failed for file %q: %w", batchRecord.Name, err)
+				return fmt.Errorf("cache insert failed for file %q: %w", batchRecord.Data.FileName, err)
 			}
 			continue
 		}
 
 		var result sql.Result
-		result, err = updateStatement.Exec(batchRecord.FileHash, batchRecord.ModifiedTime, batchRecord.Size, batchRecord.Name)
+		result, err = updateStatement.Exec(batchRecord.Data.FileHash, batchRecord.Data.LastModifiedTime, batchRecord.Data.FileSize, batchRecord.Data.FileName)
 		if err != nil {
-			return fmt.Errorf("cache update failed for file %q: %w", batchRecord.Name, err)
+			return fmt.Errorf("cache update failed for file %q: %w", batchRecord.Data.FileName, err)
 		}
 
 		var rowsAffected int64
@@ -103,7 +99,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		}
 
 		if rowsAffected == 0 {
-			return fmt.Errorf("cache update failed for file %q. No matching rows", batchRecord.Name)
+			return fmt.Errorf("cache update failed for file %q. No matching rows", batchRecord.Data.FileName)
 		}
 	}
 

@@ -58,11 +58,12 @@ func SaveUpdates(updates []CacheUpdate) error {
 	batch := make([]database.BatchRecord, 0, len(updates))
 	for _, update := range updates {
 		batch = append(batch, database.BatchRecord{
-			Name:         update.FileData.Name,
-			Size:         update.FileData.Size,
-			ModifiedTime: update.FileData.LastModifiedTime.UnixNano(),
-			FileHash:     update.Hash,
-			IsInsert:     update.Operation == InsertRecord,
+			Data: database.FileHashRecord{
+				FileName:         update.FileData.Name,
+				FileSize:         update.FileData.Size,
+				LastModifiedTime: update.FileData.LastModifiedTime.UnixNano(),
+				FileHash:         update.Hash},
+			IsInsert: update.Operation == InsertRecord,
 		})
 	}
 

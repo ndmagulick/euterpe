@@ -3,6 +3,9 @@ package directorydiff
 import (
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
+	"fmt"
+
+	"github.com/fatih/color"
 )
 
 type DiffResult struct {
@@ -53,6 +56,37 @@ func Diff(sourceFiles, destinationFiles map[string]fileio.FileData, cacheUpdates
 		FilesToDelete: filesToDelete,
 		FilesToCopy:   filesToCopy,
 		SyncSize:      syncSize}
+}
+
+func PrintDiff(diffResult DiffResult, sourcePath, destinationPath string) {
+	minus := color.RedString("-")
+	plus := color.GreenString("+")
+
+	if len(diffResult.FilesToDelete) > 0 {
+		color.Blue("%d files will be deleted from %s", len(diffResult.FilesToDelete), destinationPath)
+		for _, value := range diffResult.FilesToDelete {
+			fmt.Printf("%s %s\n", minus, value.Name)
+		}
+	} else {
+		color.Yellow("No files will be deleted")
+	}
+
+	if len(diffResult.FilesToCopy) > 0 {
+		color.Blue("%d files will be copied from %s to %s", len(diffResult.FilesToCopy), sourcePath, destinationPath)
+		for _, value := range diffResult.FilesToCopy {
+			fmt.Printf("%s %s\n", plus, value.Name)
+		}
+	} else {
+		color.Yellow("No files will be copied")
+	}
+
+	if diffResult.SyncSize > 0 {
+		fmt.Printf("\n%d bytes will be used\n", diffResult.SyncSize)
+	} else if diffResult.SyncSize < 0 {
+		fmt.Printf("\n%d bytes will be freed\n", diffResult.SyncSize)
+	} else {
+		fmt.Printf("\nNo bytes will be freed or used\n")
+	}
 }
 
 func compareContents(sourceFiles, destinationFiles map[string]fileio.FileData, cacheUpdates map[string]filecache.CacheUpdate) (filesToDelete, filesToCopy []fileio.FileData) {
