@@ -39,7 +39,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("Backing up device files to %s\n", backupDirectoryPath)
+	fmt.Printf("Backing up device files to %s\n", strings.TrimSuffix(backupDirectoryPath, partialSuffix))
 
 	onProgress, finish := ui.NewProgressBar("backing up", backupSize)
 	copyResults := fileio.CopyFilesConcurrent(deviceFiles, devicePath, backupDirectoryPath, onProgress)
