@@ -17,7 +17,8 @@ var rootCommand = &cobra.Command{
 	Short: "Euterpe mp3 player sync CLI application",
 	Long:  "Euterpe is a simple CLI that syncs your music library to your mp3 player.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		executableDirectory, err := fileio.GetExecutableDirectory()
+		var err error
+		executableDirectory, err = fileio.GetExecutableDirectory()
 		if err != nil {
 			return err
 		}
