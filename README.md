@@ -33,6 +33,7 @@ Claude was only used for review and to be a rubber ducky.
 
 #### Much Later
 
-- Add support for expandable storage
 - Add support for subdirectories
+- Add support for expandable storage
+- Make compatible for Mac and Linux
 - Playlists?
