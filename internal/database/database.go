@@ -35,7 +35,7 @@ func OpenDatabase(databasePath string) error {
 	if err != nil {
 		closeErr := CloseDatabase()
 		if closeErr != nil {
-			return errors.Join(fmt.Errorf("pinging database %w", err), closeErr)
+			return errors.Join(fmt.Errorf("pinging database: %w", err), closeErr)
 		}
 
 		return fmt.Errorf("pinging database: %w", err)
@@ -49,7 +49,12 @@ func OpenDatabase(databasePath string) error {
 						)`)
 
 	if err != nil {
-		return err
+		closeErr := CloseDatabase()
+		if closeErr != nil {
+			return errors.Join(fmt.Errorf("creating file hash table: %w", err), closeErr)
+		}
+
+		return fmt.Errorf("creating file hash table: %w", err)
 	}
 
 	return nil
@@ -58,6 +63,7 @@ func OpenDatabase(databasePath string) error {
 func CloseDatabase() error {
 	if db != nil {
 		err := db.Close()
+		db = nil
 		if err != nil {
 			return fmt.Errorf("closing database: %w", err)
 		}
@@ -69,14 +75,14 @@ func CloseDatabase() error {
 func ApplyBatch(batchRecords []BatchRecord) error {
 	transaction, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer transaction.Rollback()
 
 	insertStatement, err := transaction.Prepare(`INSERT INTO fileHashes (fileName, size, lastModifiedTime, fileHash)
 				VALUES (?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing insert statement: %w", err)
 	}
 	defer insertStatement.Close()
 
@@ -86,7 +92,7 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 			size = ?
 			WHERE fileName = ?`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing update statement: %w", err)
 	}
 	defer updateStatement.Close()
 
@@ -108,15 +114,20 @@ func ApplyBatch(batchRecords []BatchRecord) error {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()
 		if err != nil {
-			return err
+			return fmt.Errorf("accessing affected rows after updating: %w", err)
 		}
 
 		if rowsAffected == 0 {
-			return fmt.Errorf("cache update failed for file %q. No matching rows", batchRecord.Data.FileName)
+			return fmt.Errorf("cache update failed for file %q: no matching rows", batchRecord.Data.FileName)
 		}
 	}
 
-	return transaction.Commit()
+	err = transaction.Commit()
+	if err != nil {
+		return fmt.Errorf("committing insert/update transaction: %w", err)
+	}
+
+	return nil
 }
 
 func GetAllFileNames() ([]string, error) {
@@ -124,7 +135,7 @@ func GetAllFileNames() ([]string, error) {
 
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting all files names from database: %w", err)
 	}
 	defer rows.Close()
 
@@ -133,7 +144,7 @@ func GetAllFileNames() ([]string, error) {
 		var fileName string
 		err = rows.Scan(&fileName)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning files names from cache: %w", err)
 		}
 
 		fileNameList = append(fileNameList, fileName)
@@ -141,10 +152,10 @@ func GetAllFileNames() ([]string, error) {
 
 	err = rows.Err()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterating file names from cache: %w", err)
 	}
 
-	return fileNameList, err
+	return fileNameList, nil
 }
 
 func GetAllFiles() (map[string]FileHashRecord, error) {
@@ -153,7 +164,7 @@ func GetAllFiles() (map[string]FileHashRecord, error) {
 
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying files from cache: %w", err)
 	}
 	defer rows.Close()
 
@@ -166,7 +177,7 @@ func GetAllFiles() (map[string]FileHashRecord, error) {
 		var dbFileHash string
 		err = rows.Scan(&dbFileName, &dbFileSize, &dbLastModifiedTime, &dbFileHash)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning files from cache: %w", err)
 		}
 
 		filesInCache[dbFileName] = FileHashRecord{FileName: dbFileName, FileSize: dbFileSize, LastModifiedTime: dbLastModifiedTime, FileHash: dbFileHash}
@@ -174,10 +185,10 @@ func GetAllFiles() (map[string]FileHashRecord, error) {
 
 	err = rows.Err()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterating files from cache: %w", err)
 	}
 
-	return filesInCache, err
+	return filesInCache, nil
 }
 
 func DeleteRecords(orphanedFiles []string) error {
@@ -187,13 +198,13 @@ func DeleteRecords(orphanedFiles []string) error {
 
 	transaction, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning delete transaction: %w", err)
 	}
 	defer transaction.Rollback()
 
 	deleteStatement, err := transaction.Prepare(`DELETE FROM fileHashes WHERE fileName = ?`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing delete statement: %w", err)
 	}
 	defer deleteStatement.Close()
 
@@ -204,20 +215,19 @@ func DeleteRecords(orphanedFiles []string) error {
 		}
 	}
 
-	return transaction.Commit()
+	err = transaction.Commit()
+	if err != nil {
+		return fmt.Errorf("committing delete transaction: %w", err)
+	}
+
+	return nil
 }
 
 func ClearTable() error {
-	transaction, err := db.Begin()
+	_, err := db.Exec(`DELETE FROM fileHashes`)
 	if err != nil {
-		return err
-	}
-	defer transaction.Rollback()
-
-	_, err = transaction.Exec(`DELETE FROM fileHashes`)
-	if err != nil {
-		return err
+		return fmt.Errorf("clearing table: %w", err)
 	}
 
-	return transaction.Commit()
+	return nil
 }
