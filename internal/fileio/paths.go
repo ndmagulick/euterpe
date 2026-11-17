@@ -27,11 +27,11 @@ func PathsOverlap(path1, path2 string) (bool, error) {
 func ValidateDirectoryPath(path string) error {
 	pathInfo, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("validateSettings: %w", err)
+		return fmt.Errorf("validateDirectoryPath %q: %w", path, err)
 	}
 
 	if !pathInfo.IsDir() {
-		return fmt.Errorf("validateSettings: path is not a directory: %q", path)
+		return fmt.Errorf("validateDirectoryPath: path is not a directory: %q", path)
 	}
 
 	return nil

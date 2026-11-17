@@ -119,7 +119,7 @@ func commitBackup(backupDirectoryPath string) (string, error) {
 	committedBackupPath := strings.TrimSuffix(backupDirectoryPath, partialSuffix)
 	err := os.Rename(backupDirectoryPath, committedBackupPath)
 	if err != nil {
-		return "", fmt.Errorf("committing backup: %w", err)
+		return "", fmt.Errorf("committing backup at %q: %w", backupDirectoryPath, err)
 	}
 
 	return committedBackupPath, nil
