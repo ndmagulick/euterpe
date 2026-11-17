@@ -49,10 +49,15 @@ func OpenDatabase(databasePath string) error {
 	return nil
 }
 
-func CloseDatabase() {
+func CloseDatabase() error {
 	if db != nil {
-		db.Close()
+		err := db.Close()
+		if err != nil {
+			return fmt.Errorf("closing database: %w", err)
+		}
 	}
+
+	return nil
 }
 
 func ApplyBatch(batchRecords []BatchRecord) error {
@@ -203,13 +208,7 @@ func ClearTable() error {
 	}
 	defer transaction.Rollback()
 
-	deleteStatement, err := transaction.Prepare(`DELETE FROM fileHashes`)
-	if err != nil {
-		return err
-	}
-	defer deleteStatement.Close()
-
-	_, err = deleteStatement.Exec()
+	_, err = transaction.Exec(`DELETE FROM fileHashes`)
 	if err != nil {
 		return err
 	}

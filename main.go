@@ -8,7 +8,7 @@ import (
 
 func main() {
 	err := cmd.Execute()
-	database.CloseDatabase()
+	err = database.CloseDatabase()
 
 	if err != nil {
 		os.Exit(1)
