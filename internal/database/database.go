@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "modernc.org/sqlite"
@@ -32,7 +33,12 @@ func OpenDatabase(databasePath string) error {
 
 	err = db.Ping()
 	if err != nil {
-		return err
+		closeErr := CloseDatabase()
+		if closeErr != nil {
+			return errors.Join(fmt.Errorf("pinging database %w", err), closeErr)
+		}
+
+		return fmt.Errorf("pinging database: %w", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS fileHashes (
