@@ -14,7 +14,7 @@ import (
 )
 
 const defaultBackupRootDirectoryName = "Euterpe Backups"
-const backupDirectoryNameTimeStamp = "2006-01-02_15-04-05"
+const backupDirectoryNameTimeStamp = "2006-01-02_15-04-05.000"
 const partialSuffix = ".partial"
 
 func Backup(devicePath, backupRootPath string) (string, error) {
