@@ -73,6 +73,9 @@ var restoreCommand = &cobra.Command{
 		}
 
 		err = restore.Restore(config.DestinationDirectoryPath, backupSelection)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
