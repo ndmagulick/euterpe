@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 )
 
 type restorePlan struct {
@@ -48,13 +49,23 @@ func planRestore(destination, backupPath string) (restorePlan, error) {
 	if err != nil {
 		return restorePlan{}, err
 	}
+
+	if len(backupFileMap) == 0 {
+		return restorePlan{}, fmt.Errorf("no audio files to restore in %q", backupPath)
+	}
+
 	filesToRestore := slices.Collect(maps.Values(backupFileMap))
 
-	filesToDeleteMap, err := fileio.ReadDirectory(destination)
+	destinationFileMap, err := fileio.ReadDirectory(destination)
 	if err != nil {
 		return restorePlan{}, err
 	}
-	filesToDelete := slices.Collect(maps.Values(filesToDeleteMap))
+	filesToDelete := slices.Collect(maps.Values(destinationFileMap))
+
+	// sort files to delete so they aren't removed in random order
+	slices.SortFunc(filesToDelete, func(a, b fileio.FileData) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 
 	backupSize := fileio.CalculateFileListSize(filesToRestore)
 	filesToDeleteSize := fileio.CalculateFileListSize(filesToDelete)

@@ -4,6 +4,8 @@ import (
 	"euterpe/internal/filecache"
 	"euterpe/internal/fileio"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/fatih/color"
 )
@@ -100,6 +102,10 @@ func compareContents(sourceFiles, destinationFiles map[string]fileio.FileData, c
 		}
 	}
 
+	slices.SortFunc(filesToDelete, func(a, b fileio.FileData) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
 	for key, value := range sourceFiles {
 		destinationFile, onDevice := destinationFiles[key]
 		update, existsInCacheUpdates := cacheUpdates[key]
@@ -109,6 +115,10 @@ func compareContents(sourceFiles, destinationFiles map[string]fileio.FileData, c
 			filesToCopy = append(filesToCopy, value)
 		}
 	}
+
+	slices.SortFunc(filesToCopy, func(a, b fileio.FileData) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 
 	return filesToDelete, filesToCopy
 }

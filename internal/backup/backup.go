@@ -75,8 +75,8 @@ func CreateDefaultBackupRootDirectory() (string, error) {
 	return defaultRootPath, nil
 }
 
-func GetBackupDirectories(backupRootPath string) (map[string]string, error) {
-	directoryMap := make(map[string]string)
+func GetBackupDirectories(backupRootPath string) ([]string, error) {
+	var directories []string
 	entries, err := os.ReadDir(backupRootPath)
 	if err != nil {
 		return nil, err
@@ -84,15 +84,20 @@ func GetBackupDirectories(backupRootPath string) (map[string]string, error) {
 
 	for _, entry := range entries {
 		if entry.IsDir() && !strings.HasSuffix(entry.Name(), partialSuffix) {
-			directoryMap[entry.Name()] = filepath.Join(backupRootPath, entry.Name())
+			directories = append(directories, entry.Name())
 		}
 	}
 
-	if len(directoryMap) == 0 {
-		return nil, fmt.Errorf("no backups found")
+	if len(directories) == 0 {
+		return nil, fmt.Errorf("no backups found in %q", backupRootPath)
 	}
 
-	return directoryMap, nil
+	// Sort in descending order with the most recent backup first
+	slices.SortFunc(directories, func(a, b string) int {
+		return strings.Compare(b, a)
+	})
+
+	return directories, nil
 }
 
 func createBackupDirectory(backupRootPath string) (string, error) {
