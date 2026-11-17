@@ -7,6 +7,7 @@ import (
 	"euterpe/internal/settings"
 	"euterpe/ui"
 	"fmt"
+	"path/filepath"
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -59,7 +60,8 @@ var restoreCommand = &cobra.Command{
 			return err
 		}
 
-		backupMenu, err := ui.NewSelectMenu(backupMenuTitle, directories, &backupSelection)
+		selectMenuOptions := buildRestoreMenuOptions(directories, config.BackupRootDirectoryPath)
+		backupMenu, err := ui.NewSelectMenu(backupMenuTitle, selectMenuOptions, &backupSelection)
 		if err != nil {
 			return err
 		}
@@ -79,4 +81,14 @@ var restoreCommand = &cobra.Command{
 
 		return nil
 	},
+}
+
+func buildRestoreMenuOptions(backupDirectories []string, backupRootPath string) []ui.SelectMenuStringPairing {
+	var options []ui.SelectMenuStringPairing
+	for _, directory := range backupDirectories {
+		entry := ui.SelectMenuStringPairing{Option: directory, Value: filepath.Join(backupRootPath, directory)}
+		options = append(options, entry)
+	}
+
+	return options
 }
