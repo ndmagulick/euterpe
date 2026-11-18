@@ -13,11 +13,7 @@ var syncCommand = &cobra.Command{
 	Short: "Syncs your music library to your mp3 player",
 	Long:  "Syncs the music library specified in your settings.json file to the mp3 player path also specified in your settings.json file.",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		err := settings.ValidateSyncSettings(config.SourceDirectoryPath, config.DestinationDirectoryPath)
-		if err != nil {
-			return err
-		}
-		return nil
+		return settings.ValidateSyncSettings(config.SourceDirectoryPath, config.DestinationDirectoryPath)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		syncReport, err := filesync.Sync(config.SourceDirectoryPath, config.DestinationDirectoryPath)
@@ -25,10 +21,6 @@ var syncCommand = &cobra.Command{
 			fmt.Printf("warning: %v", cacheError)
 		}
 
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	},
 }

@@ -12,11 +12,7 @@ var diffCommand = &cobra.Command{
 	Short: "Prints the folder diff between the music library and the mp3 player",
 	Long:  "Prints the folder diff between the music library and the mp3 player. It will list which files will be copied to and delete from the mp3 player during the sync process.",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		err := settings.ValidateSyncSettings(config.SourceDirectoryPath, config.DestinationDirectoryPath)
-		if err != nil {
-			return err
-		}
-		return nil
+		return settings.ValidateSyncSettings(config.SourceDirectoryPath, config.DestinationDirectoryPath)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		diffInputs, err := directorydiff.PrepareDiffInputs(config.SourceDirectoryPath, config.DestinationDirectoryPath)

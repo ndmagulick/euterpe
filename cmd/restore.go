@@ -54,7 +54,7 @@ var restoreCommand = &cobra.Command{
 			return nil
 		}
 
-		var backupSelection string = ""
+		var backupSelection string
 		directories, err := backup.GetBackupDirectories(config.BackupRootDirectoryPath)
 		if err != nil {
 			return err
@@ -74,12 +74,7 @@ var restoreCommand = &cobra.Command{
 			return err
 		}
 
-		err = restore.Restore(config.DestinationDirectoryPath, backupSelection)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return restore.Restore(config.DestinationDirectoryPath, backupSelection)
 	},
 }
 

@@ -29,12 +29,7 @@ var rootCommand = &cobra.Command{
 		}
 
 		config = cfg
-		err = database.OpenDatabase(filepath.Join(executableDirectory, database.DatabaseName))
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return database.OpenDatabase(filepath.Join(executableDirectory, database.DatabaseName))
 	},
 }
 
