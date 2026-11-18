@@ -102,12 +102,7 @@ func GetBackupDirectories(backupRootPath string) ([]string, error) {
 
 func createBackupDirectory(backupRootPath string) (string, error) {
 	backupDirectoryPath := filepath.Join(backupRootPath, time.Now().Format(backupDirectoryNameTimeStamp)+partialSuffix)
-	err := os.MkdirAll(backupRootPath, 0o755)
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Mkdir(backupDirectoryPath, 0o755)
+	err := os.Mkdir(backupDirectoryPath, 0o755)
 	if err != nil {
 		return "", err
 	}
