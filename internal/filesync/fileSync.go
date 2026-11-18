@@ -50,7 +50,7 @@ func planSync(source, destination string) (syncPlan, error) {
 
 	// If no supported files exist, we error since it would wipe the device and cache
 	if len(diffInputs.SourceFiles) == 0 {
-		return syncPlan{}, fmt.Errorf("no supported audio files exist in the music library, sync aborted")
+		return syncPlan{}, errors.New("no supported audio files exist in the music library, sync aborted")
 	}
 
 	diffResult := directorydiff.Diff(diffInputs.SourceFiles, diffInputs.DestinationFiles, diffInputs.CacheUpdates)

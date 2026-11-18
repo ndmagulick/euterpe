@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"errors"
 	"euterpe/internal/backup"
 	"euterpe/internal/fileio"
 	"fmt"
@@ -23,7 +24,7 @@ func ValidateSyncSettings(sourceDirectoryPath, destinationDirectoryPath string) 
 	}
 
 	if overlapping {
-		return fmt.Errorf("source and destination paths overlap")
+		return errors.New("source and destination paths overlap")
 	}
 
 	return nil
@@ -45,7 +46,7 @@ func ResolveBackupSettings(backupRootDirectoryPath string, destinationDirectoryP
 	}
 
 	if overlapping {
-		return "", fmt.Errorf("backup and destination paths overlap")
+		return "", errors.New("backup and destination paths overlap")
 	}
 
 	return backupRootPath, nil

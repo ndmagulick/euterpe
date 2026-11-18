@@ -1,6 +1,7 @@
 package fileio
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,7 +9,7 @@ import (
 
 func PathsOverlap(path1, path2 string) (bool, error) {
 	if path1 == "" || path2 == "" {
-		return false, fmt.Errorf("pathsOverlap: empty path entered")
+		return false, errors.New("pathsOverlap: empty path entered")
 	}
 
 	resolvedPath1, err := resolvePath(path1)

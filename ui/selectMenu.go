@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/huh"
@@ -28,7 +29,7 @@ func NewSelectMenu(title string, options []SelectMenuStringPairing, selection *s
 
 func newSelectMenuOptions(inputs []SelectMenuStringPairing) ([]huh.Option[string], error) {
 	if len(inputs) == 0 {
-		return nil, fmt.Errorf("constructing options, no entries exist")
+		return nil, errors.New("constructing options, no entries exist")
 	}
 
 	var options []huh.Option[string]

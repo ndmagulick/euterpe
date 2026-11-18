@@ -24,7 +24,7 @@ func Backup(devicePath, backupRootPath string) (string, error) {
 	}
 
 	if len(deviceFileMap) == 0 {
-		return "", fmt.Errorf("device has no audio files to backup")
+		return "", errors.New("device has no audio files to backup")
 	}
 
 	deviceFiles := slices.Collect(maps.Values(deviceFileMap))
