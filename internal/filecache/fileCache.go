@@ -83,12 +83,7 @@ func PruneCache(sourceFiles map[string]fileio.FileData) error {
 		}
 	}
 
-	err = database.DeleteRecords(orphanedFiles)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return database.DeleteRecords(orphanedFiles)
 }
 
 func UpdateTouchedFiles(updates map[string]CacheUpdate) error {

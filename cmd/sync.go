@@ -3,7 +3,7 @@ package cmd
 import (
 	"euterpe/internal/filesync"
 	"euterpe/internal/settings"
-	"log"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -22,7 +22,7 @@ var syncCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		syncReport, err := filesync.Sync(config.SourceDirectoryPath, config.DestinationDirectoryPath)
 		for _, cacheError := range syncReport.CacheErrors {
-			log.Printf("warning: %v", cacheError)
+			fmt.Printf("warning: %v", cacheError)
 		}
 
 		if err != nil {

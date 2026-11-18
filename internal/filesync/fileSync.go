@@ -7,7 +7,6 @@ import (
 	"euterpe/internal/fileio"
 	"euterpe/ui"
 	"fmt"
-	"log"
 )
 
 type syncPlan struct {
@@ -67,7 +66,7 @@ func planSync(source, destination string) (syncPlan, error) {
 
 func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination string) ([]fileio.CopyResult, error) {
 	if len(filesToDelete) > 0 {
-		log.Printf("Deleting files from %s", destination)
+		fmt.Printf("Deleting files from %s", destination)
 		err := fileio.DeleteFiles(filesToDelete, destination)
 		if err != nil {
 			return nil, err
@@ -76,7 +75,7 @@ func syncFiles(filesToDelete, filesToCopy []fileio.FileData, source, destination
 
 	var copyResults []fileio.CopyResult
 	if len(filesToCopy) > 0 {
-		log.Printf("Copying files from %s to %s", source, destination)
+		fmt.Printf("Copying files from %s to %s", source, destination)
 		onProgress, finish := ui.NewProgressBar("copying", fileio.CalculateFileListSize(filesToCopy))
 		copyResults = fileio.CopyFilesConcurrent(filesToCopy, source, destination, onProgress)
 		finish()
@@ -119,7 +118,7 @@ func syncCache(copyResults []fileio.CopyResult, cacheUpdates map[string]filecach
 
 	err = filecache.PruneCache(sourceFiles)
 	if err != nil {
-		cacheErrors = append(cacheErrors, fmt.Errorf("error pruning cache: %w", err))
+		cacheErrors = append(cacheErrors, fmt.Errorf("pruning cache: %w", err))
 	}
 
 	return cacheErrors

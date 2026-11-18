@@ -3,7 +3,7 @@ package cmd
 import (
 	"euterpe/internal/backup"
 	"euterpe/internal/settings"
-	"log"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -35,7 +35,7 @@ var backupCommand = &cobra.Command{
 			return err
 		}
 
-		log.Printf("\nbackup completed, files can be found at %s", backupFolderName)
+		fmt.Printf("\nbackup completed, files can be found at %s", backupFolderName)
 
 		return nil
 	},
